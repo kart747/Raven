@@ -1,0 +1,63 @@
+# Full stack: Postgres + API + web UI.
+#   docker compose up -d --build
+#   docker compose run --rm ingest          # first load (and whenever source data changes)
+# UI: http://localhost:8080   API docs: http://localhost:8000/docs
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: raven
+      POSTGRES_USER: raven
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-raven}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raven"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment: &backend_env
+      DATABASE_URL: postgresql+psycopg://raven:${POSTGRES_PASSWORD:-raven}@db:5432/raven
+      ALLOWED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+      ENABLE_SCHEDULED_INGEST: "1"
+    volumes: &backend_volumes
+      - ./data:/srv/data
+      - ./cvrajeesh_repo:/srv/cvrajeesh_repo:ro
+      - ./fcra_repo:/srv/fcra_repo:ro
+      - ./backend/data_cache:/srv/backend/data_cache
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # One-off data load: docker compose run --rm ingest
+  ingest:
+    build: ./backend
+    env_file: ./backend/.env
+    environment: *backend_env
+    volumes: *backend_volumes
+    command: ["python", "-m", "app.cli", "ingest-all"]
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

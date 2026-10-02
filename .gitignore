@@ -1,0 +1,29 @@
+# Secrets
+.env
+*.env.local
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Data (rebuild with `python -m app.cli ingest-all`)
+*.db
+*.db-journal
+
+# Third-party source datasets (clone separately, see README)
+cvrajeesh_repo/
+electoral_bonds_repo/
+fcra_repo/
+
+# Scraped page caches
+backend/data_cache/
+
+# Local data overrides may contain unpublished research
+data/*.csv
