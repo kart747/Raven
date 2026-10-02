@@ -88,11 +88,11 @@ const SOURCES = [
     borderAccent: 'border-l-violet-500',
     pill: { label: 'Active Bulk Ingestion', color: 'bg-violet-950/60 border-violet-800/40 text-violet-400' },
     name: 'Electoral Bonds — ECI Supreme Court Disclosure',
-    subtitle: 'SBI disclosure to the Election Commission of India · cvrajeesh/electoral-bonds CSVs',
+    subtitle: 'SBI disclosure to the Election Commission of India · cvrajeesh/electoral-bond-data CSVs',
     url: 'https://www.eci.gov.in/disclosure-of-electoral-bonds',
     license: 'Open Public Disclosure — Supreme Court Order (WP Civil 880/2017)',
     licenseUrl: 'https://www.eci.gov.in/disclosure-of-electoral-bonds',
-    datasetUrl: 'https://github.com/cvrajeesh/electoral-bonds',
+    datasetUrl: 'https://github.com/cvrajeesh/electoral-bond-data',
     refresh: 'Static — one-time import from March 21 2024 final SBI/ECI disclosure',
     dataType: 'Electoral bond encashments matched to purchasers · 20,384 bonds',
     description:
