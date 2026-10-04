@@ -3,7 +3,7 @@ import logging
 import os
 
 import requests
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from .database import SessionLocal
 from . import models, crud
@@ -61,6 +61,15 @@ def build_context(db) -> str:
     except Exception:
         pib = ["- (PIB feed unavailable)"]
 
+    C = models.Candidate
+    mla_count, mla_cases = db.query(func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)))\
+        .filter(C.house == "Vidhan Sabha").one()
+    mp_count, mp_cases = db.query(func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)))\
+        .filter(C.house == "Lok Sabha", C.is_winner.is_(True)).one()
+    Q = models.ParliamentQuestion
+    recent_q = db.query(Q.ministry, func.count(Q.id)).filter(Q.lok_sabha == 18)\
+        .group_by(Q.ministry).order_by(func.count(Q.id).desc()).limit(5).all()
+
     bills, _ = crud.get_legislative_bills(db, limit=10)
     bill_lines = [f"- {b['bill_title']} — {b['introduced_by']} ({b['current_status']})" for b in bills]
 
@@ -77,6 +86,13 @@ NGO FOREIGN CONTRIBUTIONS (FCRA annual returns, by fiscal year):
 
 RECENT PIB PRESS RELEASES:
 {chr(10).join(pib)}
+
+ELECTED REPRESENTATIVES (MyNeta affidavits; "cases" = pending cases declared, not convictions):
+- Lok Sabha 2024 winners: {mp_count}, of whom {int(mp_cases or 0)} declared pending criminal cases
+- Sitting MLAs (latest assembly elections): {mla_count}, of whom {int(mla_cases or 0)} declared pending criminal cases
+
+MOST-ASKED MINISTRIES IN THE 18th LOK SABHA (number of questions):
+{chr(10).join(f"- {m}: {n}" for m, n in recent_q) or "- none loaded"}
 
 RECENT PRIVATE MEMBER BILLS (18th Lok Sabha):
 {chr(10).join(bill_lines) or "- none loaded"}
@@ -95,7 +111,8 @@ Sections (markdown):
 ## Summary
 ## Electoral Bonds
 ## NGO Foreign Contributions
-## Government Press Releases & Bills
+## Elected Representatives
+## Parliament & Government
 
 CONTEXT:
 {context}"""

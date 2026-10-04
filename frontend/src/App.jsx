@@ -142,7 +142,11 @@ export default function App() {
 
       <footer className="bg-slate-950 border-t border-slate-900 mt-12 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4">
-          <p>Raven · Data: SBI/ECI, ADR/MyNeta, MHA FCRA returns, Lok Sabha (via Vonter), PIB.</p>
+          <p>
+            Raven · Data: SBI/ECI, ADR/MyNeta, MHA FCRA returns, Lok Sabha (via Vonter), PIB ·{' '}
+            <a href="https://github.com/kart747/Raven" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300">Source code (AGPL-3.0)</a> ·{' '}
+            <a href="https://github.com/kart747/Raven/issues/new?template=data-correction.yml" target="_blank" rel="noopener noreferrer" className="text-amber-400/80 hover:text-amber-300">Report an error</a>
+          </p>
         </div>
       </footer>
     </div>
