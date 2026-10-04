@@ -10,8 +10,9 @@ import Spinner from './ui/Spinner';
 
 const LIMIT = 10;
 const VIEWS = [
-  { id: 'ls', label: 'Lok Sabha 2024: all candidates', params: { house: 'Lok Sabha' } },
-  { id: 'mp', label: 'Lok Sabha 2024: winners (MPs)', params: { house: 'Lok Sabha', winners_only: true } },
+  { id: 'ls', label: 'Lok Sabha 2024: all candidates', params: { house: 'Lok Sabha', election: 'Lok Sabha 2024' } },
+  { id: 'mp', label: 'Lok Sabha 2024: winners', params: { house: 'Lok Sabha', election: 'Lok Sabha 2024', winners_only: true } },
+  { id: 'bye', label: 'Lok Sabha by-elections', params: { house: 'Lok Sabha', election_prefix: 'Lok Sabha by-election' } },
   { id: 'mla', label: 'Sitting MLAs (latest assembly elections)', params: { house: 'Vidhan Sabha' } },
 ];
 
@@ -31,7 +32,7 @@ export default function CandidatesTable({ initialFilterState }) {
 
   const filters = {
     ...VIEWS.find((v) => v.id === view).params,
-    election: view === 'mla' ? election : '',
+    ...(view === 'mla' ? { election } : {}),
     search, party_id: party, state, sort_by: sortBy,
   };
   const { data, isLoading, isError } = useCandidates({ ...filters, limit: LIMIT, offset });

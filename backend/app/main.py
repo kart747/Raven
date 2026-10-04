@@ -1,4 +1,5 @@
 import csv
+import difflib
 import json
 import logging
 import os
@@ -235,6 +236,7 @@ def read_candidates(
     house: Optional[str] = Query(None, description="'Lok Sabha' or 'Vidhan Sabha'"),
     election: Optional[str] = Query(None, description="e.g. 'Lok Sabha 2024', 'Karnataka 2023'"),
     winners_only: bool = Query(False, description="Only election winners (sitting MPs/MLAs)"),
+    election_prefix: Optional[str] = Query(None, description="e.g. 'Lok Sabha by-election'"),
     limit: int = Query(100, ge=1, le=MAX_PAGE),
     offset: int = Query(0, ge=0),
     export_csv: bool = Query(False, description="Export as CSV"),
@@ -242,7 +244,7 @@ def read_candidates(
 ):
     """Candidate affidavit dossiers with filtering, sorting, and CSV export."""
     filters = dict(state=state, party_id=party_id, search=search, sort_by=sort_by,
-                   house=house, election=election, winners_only=winners_only)
+                   house=house, election=election, winners_only=winners_only, election_prefix=election_prefix)
     if export_csv:
         results, _ = crud.get_candidates(db, **filters, limit=MAX_EXPORT_ROWS, offset=0)
         return csv_response(results, CANDIDATE_CSV_COLUMNS, "raven_candidates.csv")
@@ -299,7 +301,8 @@ def read_candidate_state_summary(
         func.coalesce(func.sum(models.Candidate.assets), 0.0),
         func.coalesce(func.sum(models.Candidate.criminal_cases), 0),
         func.sum(case((models.Candidate.criminal_cases > 0, 1), else_=0)),
-    ).filter(models.Candidate.house == house).group_by(models.Candidate.state).all()
+    ).filter(models.Candidate.house == house,
+             *([models.Candidate.election == "Lok Sabha 2024"] if house == "Lok Sabha" else [])).group_by(models.Candidate.state).all()
     return {
         state: {
             "candidate_count": count,
@@ -815,7 +818,7 @@ def read_insights(db: Session = Depends(get_db)):
                               f"funded the most ({spread[2]} parties).",
                       "link": {"donor": spread[0]}})
 
-    mps = db.query(C).filter(C.house == "Lok Sabha", C.is_winner.is_(True))
+    mps = db.query(C).filter(C.election == "Lok Sabha 2024", C.is_winner.is_(True))
     n_mps = mps.order_by(None).count()
     if n_mps:
         with_cases = mps.filter(C.criminal_cases > 0).order_by(None).count()
@@ -922,13 +925,13 @@ def read_party_profile(party_id: str, db: Session = Depends(get_db)):
     def reps(*flt):
         return db.query(C).filter(C.party_id == party_id, *flt)
 
-    mps = reps(C.house == "Lok Sabha", C.is_winner.is_(True)).order_by(C.state, C.constituency).all()
+    mps = reps(C.election == "Lok Sabha 2024", C.is_winner.is_(True)).order_by(C.state, C.constituency).all()
     mla_by_state = db.query(C.state, C.election, func.count(C.id))\
         .filter(C.party_id == party_id, C.house == "Vidhan Sabha")\
         .group_by(C.state, C.election).order_by(desc(func.count(C.id))).all()
     ls_count, ls_with_cases, ls_avg_assets = db.query(
         func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)), func.avg(C.assets),
-    ).filter(C.party_id == party_id, C.house == "Lok Sabha").one()
+    ).filter(C.party_id == party_id, C.election == "Lok Sabha 2024").one()
     mla_count, mla_with_cases = db.query(
         func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)),
     ).filter(C.party_id == party_id, C.house == "Vidhan Sabha").one()
@@ -980,14 +983,27 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
     C, Q = models.Candidate, models.ParliamentQuestion
 
     # One MP per seat, so the 2024 winner in the same state and constituency is this MP's affidavit
-    affidavit = next((c for c in db.query(C).filter(C.house == "Lok Sabha", C.is_winner.is_(True), C.state == mp.state_represented)
-                      if _seat_key(c.constituency) == _seat_key(mp.constituency)), None)
+    # If the seat was refilled at a by-election, the by-election winner's affidavit is the sitting MP's
+    state_winners = db.query(C).filter(C.house == "Lok Sabha", C.is_winner.is_(True), C.state == mp.state_represented).all()
+    seat_winners = [c for c in state_winners if _seat_key(c.constituency) == _seat_key(mp.constituency)]
+    if not seat_winners:
+        # Sources spell some seats differently ("Baharaich"/"Bahraich"); accept one clear close match in the state
+        close = difflib.get_close_matches(_seat_key(mp.constituency),
+                                          {_seat_key(c.constituency) for c in state_winners}, n=2, cutoff=0.75)
+        if len(close) == 1 or (len(close) == 2 and difflib.SequenceMatcher(None, _seat_key(mp.constituency), close[0]).ratio()
+                               - difflib.SequenceMatcher(None, _seat_key(mp.constituency), close[1]).ratio() > 0.1):
+            seat_winners = [c for c in state_winners if _seat_key(c.constituency) == close[0]]
+    seat_winners.sort(key=lambda c: (c.election != "Lok Sabha 2024", c.election or ""), reverse=True)
+    affidavit = next((c for c in seat_winners if _seat_key(c.name) == _seat_key(mp.mp_name)), None) \
+        or (seat_winners[0] if seat_winners else None)
     q = db.query(Q).filter(Q.representative == mp.mp_name)
     by_ministry = db.query(Q.ministry, func.count(Q.id)).filter(Q.representative == mp.mp_name)\
         .group_by(Q.ministry).order_by(desc(func.count(Q.id))).limit(8).all()
     bills = db.query(models.LegislativeBill).filter(models.LegislativeBill.introduced_by == mp.mp_name)\
         .order_by(desc(models.LegislativeBill.introduced_on)).all()
-    party = db.query(models.Party.id).filter(models.Party.name == mp.party_name).scalar()
+    # A party can exist under its bond-data code and MyNeta's label; prefer the short code
+    party = db.query(models.Party.id).filter(models.Party.name == mp.party_name)\
+        .order_by(func.length(models.Party.id), models.Party.id).limit(1).scalar()
 
     return {
         "id": mp.id, "name": mp.mp_name, "party": mp.party_name, "party_id": party,
@@ -1175,7 +1191,7 @@ def read_data_quality(db: Session = Depends(get_db)):
     ngo_verified = db.query(func.count(models.NGO.id)).filter(models.NGO.registration_status != "Unknown").scalar()
     ngo_years = [y for (y,) in db.query(models.NGODonation.year).distinct().order_by(models.NGODonation.year)]
 
-    ls = models.Candidate.house == "Lok Sabha"
+    ls = models.Candidate.election == "Lok Sabha 2024"
     candidates = db.query(func.count(models.Candidate.id)).filter(ls).scalar()
     cand_no_state = db.query(func.count(models.Candidate.id)).filter(ls, models.Candidate.state == "Unknown").scalar()
     cand_states = db.query(func.count(func.distinct(models.Candidate.state))).filter(ls).scalar()

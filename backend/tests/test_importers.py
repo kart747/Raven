@@ -202,3 +202,9 @@ print("ok")
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr[-2000:]
+
+
+def test_lok_sabha_by_elections_are_separate_elections():
+    from app.import_myneta import split_region
+    assert split_region("UTTAR PRADESH") == ("Uttar Pradesh", "Lok Sabha 2024", 2024)
+    assert split_region("Bye Election On 13-11-2024 : Kerala") == ("Kerala", "Lok Sabha by-election 2024-11-13", 2024)

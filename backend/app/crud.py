@@ -115,6 +115,7 @@ def get_candidates(
     house: str = None,
     election: str = None,
     winners_only: bool = False,
+    election_prefix: str = None,
 ):
     query = db.query(
         models.Candidate,
@@ -125,6 +126,8 @@ def get_candidates(
         query = query.filter(models.Candidate.house == house)
     if election:
         query = query.filter(models.Candidate.election == election)
+    if election_prefix:
+        query = query.filter(models.Candidate.election.startswith(election_prefix))
     if winners_only:
         query = query.filter(models.Candidate.is_winner.is_(True))
 
@@ -189,7 +192,7 @@ def get_dashboard_stats(db: Session, year: int = None):
         donors_query = donors_query.filter(models.Donation.year == year)
     total_donors_count = donors_query.count()
     
-    total_candidates_count = db.query(models.Candidate).filter(models.Candidate.house == "Lok Sabha").count()
+    total_candidates_count = db.query(models.Candidate).filter(models.Candidate.election == "Lok Sabha 2024").count()
     
     # Party Shares
     party_shares_query = db.query(

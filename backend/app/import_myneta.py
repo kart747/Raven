@@ -244,6 +244,18 @@ def candidate_page_figures(slug: str, candidate_id: int) -> tuple[float, float] 
     return parse_rupees(assets.group(1)), parse_rupees(liabilities.group(1))
 
 
+def split_region(region: str) -> tuple[str, str, int]:
+    """
+    Lok Sabha constituency pages name the state, or for by-elections listed on the same site,
+    'Bye Election On 13-11-2024 : Kerala'. Returns (state, election label, year).
+    """
+    m = re.match(r"Bye Election On (\d{2})-(\d{2})-(\d{4})\s*:\s*(.+)$", region.strip(), re.I)
+    if m:
+        day, month, year, state = m.groups()
+        return canonical_state(state), f"Lok Sabha by-election {year}-{month}-{day}", int(year)
+    return canonical_state(region), "Lok Sabha 2024", ELECTION_YEAR
+
+
 def candidate_page_state(slug: str, candidate_id: int) -> str | None:
     """State from the candidate page title: 'Name(Party):Constituency- SEAT(STATE) - Affidavit ...'."""
     soup = BeautifulSoup(fetch(f"{election_url(slug)}candidate.php?candidate_id={candidate_id}"), "html.parser")
@@ -324,7 +336,8 @@ def run_import() -> dict:
         constituency, region, candidates = parse_constituency_page(
             fetch(f"{base}index.php?action=show_candidates&constituency_id={cid}"), base, slug)
         for c in candidates:
-            rows[c["candidate_id"]] = {**c, "state": canonical_state(region)}
+            state, election, year = split_region(region)
+            rows[c["candidate_id"]] = {**c, "state": state, "election": election, "year": year}
 
     totals = published_totals(slug)
     # Constituency pages show some candidates' figures only as images; take them from the text listings
@@ -343,20 +356,28 @@ def run_import() -> dict:
             continue
         seat_states = states_by_seat.get(t["constituency"], set())
         state = next(iter(seat_states)) if len(seat_states) == 1 else candidate_page_state(slug, cid)
-        rows[cid] = {**t, "state": state or "Unknown", "is_winner": False}
+        rows[cid] = {**t, "state": state or "Unknown", "is_winner": False,
+                     "election": "Lok Sabha 2024", "year": ELECTION_YEAR}
 
     rows_list = list(rows.values())
     needed = sum(r["assets"] is None and r["candidate_id"] not in text_rows for r in rows_list)
     print(f"Lok Sabha: {len(rows_list)} candidates; {needed} need their own candidate page for figures", flush=True)
     unresolved = _fill_figures(slug, rows_list, text_rows)
-    _replace_election("Lok Sabha 2024", "Lok Sabha", ELECTION_YEAR, rows_list, legacy_year=ELECTION_YEAR)
+    by_election: dict[tuple[str, int], list[dict]] = {}
+    for r in rows_list:
+        by_election.setdefault((r["election"], r["year"]), []).append(r)
+    for (election, year), group in by_election.items():
+        legacy = ELECTION_YEAR if election == "Lok Sabha 2024" else None
+        _replace_election(election, "Lok Sabha", year, group, legacy_year=legacy)
+    general = by_election.get(("Lok Sabha 2024", ELECTION_YEAR), [])
     return {
         "candidates_imported": len(rows_list),
         "on_constituency_lists": on_lists,
         "analysed_not_on_lists": len(rows_list) - on_lists,
         "published_total": totals.get("candidates"),
-        "winners": sum(r["is_winner"] for r in rows_list),
+        "winners": sum(r["is_winner"] for r in general),
         "published_winners": totals.get("winners"),
+        "by_elections": {e: sum(r["is_winner"] for r in g) for (e, _), g in by_election.items() if e != "Lok Sabha 2024"},
         "without_state": sum(r["state"] == "Unknown" for r in rows_list),
         "figures_unavailable": unresolved,
         "with_criminal_cases": sum(r["criminal_cases"] > 0 for r in rows_list),

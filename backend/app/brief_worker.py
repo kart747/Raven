@@ -65,7 +65,7 @@ def build_context(db) -> str:
     mla_count, mla_cases = db.query(func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)))\
         .filter(C.house == "Vidhan Sabha").one()
     mp_count, mp_cases = db.query(func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)))\
-        .filter(C.house == "Lok Sabha", C.is_winner.is_(True)).one()
+        .filter(C.election == "Lok Sabha 2024", C.is_winner.is_(True)).one()
     Q = models.ParliamentQuestion
     recent_q = db.query(Q.ministry, func.count(Q.id)).filter(Q.lok_sabha == 18)\
         .group_by(Q.ministry).order_by(func.count(Q.id).desc()).limit(5).all()
