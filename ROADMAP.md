@@ -29,7 +29,8 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 | Dataset | Source | Why it matters |
 |---|---|---|
 | ~~State assembly MLAs~~ ✅ done (`ingest-assemblies`) | MyNeta | Sitting MLAs from all 31 assemblies |
-| Rajya Sabha members; all assembly candidates (not only winners) | MyNeta (same importer) | Full picture of who stood, not only who won |
+| Rajya Sabha members | MyNeta only has 2009 Rajya Sabha declarations; current members need another source (e.g. sansad.in member pages) | Completes Parliament |
+| All assembly candidates (not only winners) | MyNeta (same importer, ~40k candidates, rate-limited) | Full picture of who stood, not only who won |
 | Election results since 1962 | TCPD Lok Dhaba (unreachable from our test environment; check licence); results.eci.gov.in only hosts current counts | Who won, margins, turnout, linked to candidates |
 | Electoral trust contributions | ECI annual electoral trust reports (PDFs on old.eci.gov.in, which disallows crawling, so this needs a manual-download importer) | The biggest post-bond funding channel |
 | Party contribution reports (Form 24A, >₹20,000) | ECI / party filings | Named donors outside the bond scheme |
