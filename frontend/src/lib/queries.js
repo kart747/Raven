@@ -117,3 +117,6 @@ export const useMpProfile = (id) =>
 
 export const useNgoStateTotals = () =>
   useQuery({ queryKey: ['ngo-state-totals'], queryFn: () => apiGet('/api/v1/ngos/state-totals') });
+
+export const useLokSabhaSeats = () =>
+  useQuery({ queryKey: ['seats-ls-2024'], queryFn: () => apiGet('/api/v1/seats/lok-sabha-2024') });

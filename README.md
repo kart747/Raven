@@ -38,6 +38,7 @@ back to the original source on every record.
 | **NGO foreign funding** | About 25,000 NGOs and 87,000 annual FCRA returns (FY2016-17 to FY2020-21), with sector breakdowns, flows and year-over-year increases. |
 | **Parliament activity** | Attendance, debates, questions and private member bills for the 18th Lok Sabha, plus per-state views. |
 | **Lok Sabha questions** | Every question asked since 2009 (15th–18th Lok Sabha), searchable by words, ministry and member, each linked to the official answer PDF. Purchaser profiles list questions whose titles name the company. |
+| **Seat map** | All 543 Lok Sabha seats coloured by winning party, winner's declared cases, assets, or number of candidates; click a seat for its MP. Official state outlines on top. |
 | **State map** | Four layers (candidate assets, candidates declaring cases, MLAs declaring cases, NGO foreign funding). Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
 | **MP profiles** | Each Lok Sabha MP's 2024 affidavit next to their parliamentary record: attendance, debates, every question since 2009 by ministry, and bills. |
@@ -56,6 +57,7 @@ back to the original source on every record.
 | Candidate affidavits (Lok Sabha 2024 and all 31 state/UT assemblies) | [MyNeta](https://myneta.info/) (ADR) | Scraped, rate-limited, cached |
 | MP activity, bills & questions (ODbL-1.0) | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity), from sansad.in | Downloaded on import |
 | Press releases | PIB RSS (English national feed) | Live, cached 15 minutes |
+| Lok Sabha seat boundaries | [DataMeet `india_pc_2019_simplified`](https://github.com/datameet/maps/tree/master/parliamentary-constituencies) (CC0), 2008 delimitation; Assam and J&K seats were redrawn later and are flagged | Bundled (`frontend/public/india-pc.geojson`, rebuilt with `python -m app.cli build-seat-map`) |
 | State boundaries (map) | [DataMeet `States/Admin2`](https://github.com/datameet/maps/tree/master/States) (MIT), updated to the Survey of India map incl. Ladakh and J&K | Bundled (`frontend/public/india.geojson`) |
 | Optional: FCRA status, purchaser industry and events | Your own sourced CSVs, see [data/README.md](data/README.md) | `data/*.csv` |
 

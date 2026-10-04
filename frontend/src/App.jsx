@@ -22,6 +22,7 @@ const PartyProfile = lazy(() => import('./components/PartyProfile'));
 const MpProfile = lazy(() => import('./components/MpProfile'));
 const NgoDetailModal = lazy(() => import('./components/ngos/NgoDetailModal'));
 const SearchPalette = lazy(() => import('./components/SearchPalette'));
+const SeatMap = lazy(() => import('./components/SeatMap'));
 
 // Widgets available at #embed=<id> for use in <iframe>s
 const EMBEDS = {
@@ -29,6 +30,7 @@ const EMBEDS = {
   facts: (p) => <KeyFacts onNavigate={p.onNavigate} />,
   map: (p) => <IndiaMap selectedState={null} onSelectState={p.onSelectState}
     lsSummary={p.lsSummary} vsSummary={p.vsSummary} ngoTotals={p.ngoTotals} />,
+  seats: (p) => <Suspense fallback={null}><SeatMap onOpenMp={p.onOpenMp} /></Suspense>,
 };
 
 const TABS = [
@@ -84,7 +86,7 @@ export default function App() {
       <LangContext.Provider value={lang}>
         <div className="min-h-screen bg-slate-950 text-slate-100 p-3 flex flex-col gap-2">
           {EMBEDS[embed]({
-            onOpenDonor: (donor) => open({ donor }), onOpenParty: (party) => open({ party }),
+            onOpenDonor: (donor) => open({ donor }), onOpenParty: (party) => open({ party }), onOpenMp: (mp) => open({ mp }),
             onNavigate: (link) => open(link), onSelectState: (state) => open({ state }),
             lsSummary: stateStats, vsSummary: mlaStats, ngoTotals,
           })}
@@ -159,8 +161,14 @@ export default function App() {
             <PibTicker />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-7">
-                <IndiaMap selectedState={selectedState} onSelectState={setSelectedState}
-                  lsSummary={stateStats} vsSummary={mlaStats} ngoTotals={ngoTotals} />
+                {hash.map === 'seats' ? (
+                  <Suspense fallback={<div className="glass-panel rounded-2xl min-h-[480px]" />}>
+                    <SeatMap onOpenMp={setMpId} onShowStates={() => setHash({ map: null })} />
+                  </Suspense>
+                ) : (
+                  <IndiaMap selectedState={selectedState} onSelectState={setSelectedState}
+                    lsSummary={stateStats} vsSummary={mlaStats} ngoTotals={ngoTotals} onShowSeats={() => setHash({ map: 'seats' })} />
+                )}
               </div>
               <div className="lg:col-span-5">
                 <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} onOpenMp={setMpId} />

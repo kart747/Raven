@@ -54,7 +54,7 @@ function FitToData({ data }) {
 
 const SHADES = { high: '#06b6d4', mid: '#0e7490', low: '#1e4d5c', none: '#1e293b' };
 
-export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSummary, ngoTotals }) {
+export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSummary, ngoTotals, onShowSeats }) {
   const [geoJsonData, setGeoJsonData] = useState(null);
   const [hoveredState, setHoveredState] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -133,6 +133,11 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
         <EmbedButton id="map" height={640} />
+        {onShowSeats && (
+          <button onClick={onShowSeats} className="px-3 py-1 text-[10px] font-bold uppercase rounded-full border border-slate-800 text-slate-400 hover:text-white">
+            Seats
+          </button>
+        )}
         <button
           onClick={() => onSelectState(null)}
           className={`flex-shrink-0 px-3 py-1 text-[10px] font-bold uppercase rounded-full border transition-all ${

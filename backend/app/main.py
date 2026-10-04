@@ -23,6 +23,7 @@ from . import crud, models, schemas
 from .brief_worker import generate_and_save_weekly_brief
 from .database import ensure_schema, get_db, SessionLocal
 from .pib_ingest import PIB_FEEDS, get_cached_pib_releases
+from .seats import alias as seat_alias
 from .seed import seed_db
 
 logger = logging.getLogger("raven")
@@ -788,6 +789,36 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
     }
 
 
+# --- Lok Sabha seats (for the constituency map) ---
+@app.get("/api/v1/seats/lok-sabha-2024")
+def read_lok_sabha_seats(db: Session = Depends(get_db)):
+    """Per seat: winner (with affidavit figures), number of candidates, how many declared cases, and the MP's id."""
+    C = models.Candidate
+    rows = db.query(C.state, C.constituency, func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)))\
+        .filter(C.election == "Lok Sabha 2024").group_by(C.state, C.constituency).all()
+    winners = {(w.state, w.constituency): w for w in
+               db.query(C).filter(C.election == "Lok Sabha 2024", C.is_winner.is_(True))}
+    party_names = dict(db.query(models.Party.id, models.Party.name))
+    mp_ids = {}
+    for mp in db.query(models.MPActivity):
+        for name in (mp.constituency, seat_alias(mp.state_represented, mp.constituency)):
+            if name:
+                mp_ids[(mp.state_represented, _seat_key(name))] = mp.id
+
+    seats = {}
+    for state, seat, n, with_cases in rows:
+        w = winners.get((state, seat))
+        seats[f"{state}|{seat}"] = {
+            "state": state, "constituency": seat, "candidates": n, "candidates_with_cases": int(with_cases or 0),
+            "mp_id": mp_ids.get((state, _seat_key(seat))),
+            "winner": None if not w else {
+                "name": w.name, "party_id": w.party_id, "party": party_names.get(w.party_id, w.party_id),
+                "criminal_cases": w.criminal_cases, "assets": w.assets, "source_url": w.source_url,
+            },
+        }
+    return seats
+
+
 # --- Key facts: deterministic, sourced statements for the front page ---
 @app.get("/api/v1/insights")
 def read_insights(lang: str = Query("en", pattern="^(en|hi)$"), db: Session = Depends(get_db)):
@@ -1006,7 +1037,9 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
     # One MP per seat, so the 2024 winner in the same state and constituency is this MP's affidavit
     # If the seat was refilled at a by-election, the by-election winner's affidavit is the sitting MP's
     state_winners = db.query(C).filter(C.house == "Lok Sabha", C.is_winner.is_(True), C.state == mp.state_represented).all()
-    seat_winners = [c for c in state_winners if _seat_key(c.constituency) == _seat_key(mp.constituency)]
+    aliased = seat_alias(mp.state_represented, mp.constituency)
+    seat_winners = [c for c in state_winners
+                    if _seat_key(c.constituency) in (_seat_key(mp.constituency), _seat_key(aliased))]
     if not seat_winners:
         # Sources spell some seats differently ("Baharaich"/"Bahraich"); accept one clear close match in the state
         close = difflib.get_close_matches(_seat_key(mp.constituency),

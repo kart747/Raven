@@ -39,6 +39,10 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 | Rajya Sabha questions; full answer text | sansad.in PDFs | Search inside answers, not only titles |
 | SEBI, CCI and ED orders and press releases | Regulator websites (SEBI's listing blocks automated access, so these go in via the sourced events CSV for now) | Structured, dated, sourced events for the purchaser timeline |
 
+## Done since the first roadmap
+
+- ✅ **Seat-level map** of all 543 Lok Sabha seats joined to 2024 winners and MP profiles (`#map=seats`, embeddable).
+
 ## Phase 2: Entity graph
 
 - **Resolve organisations across datasets:** a company in the bond data = the same company in contract
