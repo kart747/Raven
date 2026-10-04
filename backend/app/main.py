@@ -728,6 +728,70 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
     }
 
 
+# --- Party profile: money in, representatives, affidavits, parliament ---
+@app.get("/api/v1/parties/{party_id}/profile")
+def read_party_profile(party_id: str, db: Session = Depends(get_db)):
+    party = db.get(models.Party, party_id)
+    if not party:
+        raise HTTPException(status_code=404, detail="Party not found")
+    D, C = models.Donation, models.Candidate
+    eb = [D.party_id == party_id, D.funding_type == "Electoral Bond"]
+    amount = func.sum(D.amount)
+
+    bond_total, bond_count = db.query(func.coalesce(amount, 0.0), func.count(D.id)).filter(*eb).one()
+    by_year = db.query(D.year, amount, func.count(D.id)).filter(*eb).group_by(D.year).order_by(D.year).all()
+    top = db.query(models.Donor.id, models.Donor.name, amount, func.count(D.id))\
+        .join(D, D.donor_id == models.Donor.id).filter(*eb)\
+        .group_by(models.Donor.id, models.Donor.name).order_by(desc(amount)).limit(16).all()
+    undisclosed = next((float(t) for _, n, t, _ in top if n == "UNKNOWN DONOR"), 0.0)
+
+    def reps(*flt):
+        return db.query(C).filter(C.party_id == party_id, *flt)
+
+    mps = reps(C.house == "Lok Sabha", C.is_winner.is_(True)).order_by(C.state, C.constituency).all()
+    mla_by_state = db.query(C.state, C.election, func.count(C.id))\
+        .filter(C.party_id == party_id, C.house == "Vidhan Sabha")\
+        .group_by(C.state, C.election).order_by(desc(func.count(C.id))).all()
+    ls_count, ls_with_cases, ls_avg_assets = db.query(
+        func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)), func.avg(C.assets),
+    ).filter(C.party_id == party_id, C.house == "Lok Sabha").one()
+    mla_count, mla_with_cases = db.query(
+        func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)),
+    ).filter(C.party_id == party_id, C.house == "Vidhan Sabha").one()
+
+    attendance, mp_rows = db.query(func.avg(models.MPActivity.attendance_pct), func.count(models.MPActivity.id))\
+        .filter(models.MPActivity.party_name == party.name).one()
+
+    return {
+        "id": party.id,
+        "name": party.name,
+        "bonds": {
+            "total": float(bond_total), "count": bond_count, "undisclosed_purchaser_amount": undisclosed,
+            "by_fiscal_year": [{"year": y, "amount": float(a), "count": n} for y, a, n in by_year],
+            "top_purchasers": [{"id": i, "name": n, "amount": float(a), "count": c}
+                               for i, n, a, c in top if n != "UNKNOWN DONOR"][:15],
+        },
+        "lok_sabha_2024": {
+            "candidates": ls_count, "winners": len(mps),
+            "candidates_declaring_cases": int(ls_with_cases or 0),
+            "avg_declared_assets": float(ls_avg_assets or 0),
+            "mps": [{"id": m.id, "name": m.name, "constituency": m.constituency, "state": m.state,
+                     "assets": m.assets, "criminal_cases": m.criminal_cases, "source_url": m.source_url} for m in mps],
+        },
+        "assemblies": {
+            "mlas": mla_count, "mlas_declaring_cases": int(mla_with_cases or 0),
+            "by_state": [{"state": st, "election": e, "mlas": n} for st, e, n in mla_by_state],
+        },
+        "parliament": {"mps_with_activity_data": mp_rows,
+                       "avg_attendance_pct": round(float(attendance), 1) if attendance is not None else None},
+        "notes": [
+            "Bond totals are encashments into this party's accounts (Apr 2019 - Feb 2024).",
+            "Representatives are matched by MyNeta's party label; post-split factions are separate parties.",
+            "'Declaring cases' means pending criminal cases declared in the affidavit, not convictions.",
+        ],
+    }
+
+
 # --- Search across every dataset ---
 @app.get("/api/v1/search")
 def search_everything(
@@ -738,6 +802,12 @@ def search_everything(
     """One query across purchasers (incl. raw SBI spellings), candidates, NGOs, MPs and questions."""
     like = f"%{q.strip()}%"
     out = {}
+
+    party_hits = db.query(models.Party).filter(or_(models.Party.name.ilike(like), models.Party.id.ilike(like)))
+    out["parties"] = {
+        "total": party_hits.order_by(None).count(),
+        "items": [{"id": p.id, "name": p.name} for p in party_hits.order_by(models.Party.name).limit(per_group)],
+    }
 
     alias_hits = db.query(models.DonorAlias.donor_id).filter(models.DonorAlias.raw_name.ilike(like))
     donors = db.query(models.Donor).filter(

@@ -37,7 +37,21 @@ PARTY_ALIASES = {
     "BJP": "BJP", "INC": "INC", "AITC": "AITC", "SP": "SP", "DMK": "DMK", "TDP": "TDP",
     "YSRCP": "YSRCP", "BJD": "BJD", "BRS": "BRS", "AAP": "AAP", "BSP": "BSP", "RJD": "RJD",
     "JD(U)": "JDU", "JD(S)": "JDS", "JMM": "JMM", "SAD": "SAD", "AIADMK": "AIADMK",
-    "SKM": "SKM", "AIMIM": "AIMIM", "RSP": "RSP", "JKNC": "JKNC", "JNP": "JSP",
+    "SKM": "SKM", "AIMIM": "AIMIM", "RSP": "RSP", "JKNC": "JKNC",
+    # Full names MyNeta uses for parties that appear in the bond data under a short ID.
+    # Exact labels only: post-split factions (e.g. "Shiv Sena (Uddhav Balasaheb Thackeray)",
+    # "NCP-Sharadchandra Pawar") are deliberately NOT mapped to the pre-split bond accounts.
+    "Jammu & Kashmir National Conference": "JKNC",
+    "Sikkim Krantikari Morcha": "SKM",
+    "Sikkim Democratic Front": "SDF",
+    "Janasena Party": "JSP",
+    "Shiv Sena": "SHS",
+    "Shiromani Akali Dal": "SAD",
+    "Goa Forward Party": "GFP",
+    "Maharashtrawadi Gomantak": "MGP",
+    "Maharashtrawadi Gomantak Party": "MGP",
+    "All India Majlis-E-Ittehadul Muslimeen": "AIMIM",
+    "Revolutionary Socialist Party": "RSP",
 }
 
 _session = requests.Session()

@@ -9,6 +9,7 @@ import LegislativeTracker from './components/LegislativeTracker';
 import Sources from './components/Sources';
 import BriefViewer from './components/BriefViewer';
 import DonorProfile from './components/DonorProfile';
+import PartyProfile from './components/PartyProfile';
 import NgoDetailModal from './components/ngos/NgoDetailModal';
 import SearchPalette from './components/SearchPalette';
 import useHashParams from './lib/useHashParams';
@@ -33,10 +34,12 @@ export default function App() {
   const selectedState = hash.state || null;
   const donorId = hash.donor ? Number(hash.donor) : null;
   const ngoId = hash.ngo ? Number(hash.ngo) : null;
+  const partyId = hash.party || null;
   const setActiveTab = (tab) => setHash({ tab: tab === 'dashboard' ? null : tab });
   const setSelectedState = (state) => setHash({ state });
   const setDonorId = (id) => setHash({ donor: id });
   const setNgoId = (id) => setHash({ ngo: id });
+  const setPartyId = (id) => setHash({ party: id });
 
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
@@ -102,7 +105,7 @@ export default function App() {
 
         {activeTab === 'dashboard' && (
           <div className="flex flex-col gap-6">
-            <DashboardStats stats={stats} loading={statsLoading} onOpenDonor={setDonorId} />
+            <DashboardStats stats={stats} loading={statsLoading} onOpenDonor={setDonorId} onOpenParty={setPartyId} />
             <PibTicker />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-7">
@@ -123,7 +126,8 @@ export default function App() {
         {activeTab === 'sources' && <Sources />}
       </main>
 
-      <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} />
+      <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} onOpenParty={(id) => setHash({ donor: null, party: id })} />
+      <PartyProfile partyId={partyId} onClose={() => setPartyId(null)} onOpenDonor={(id) => setHash({ party: null, donor: id })} />
       <NgoDetailModal ngoId={ngoId} onClose={() => setNgoId(null)} />
       <SearchPalette
         open={searchOpen}
@@ -131,6 +135,7 @@ export default function App() {
         onOpenDonor={setDonorId}
         onOpenNgo={setNgoId}
         onOpenState={(state) => setHash({ tab: null, state })}
+        onOpenParty={setPartyId}
       />
 
       <footer className="bg-slate-950 border-t border-slate-900 mt-12 py-6 text-center text-xs text-slate-500">

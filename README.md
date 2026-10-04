@@ -39,6 +39,7 @@ back to the original source on every record.
 | **Lok Sabha questions** | Every question asked since 2009 (15th–18th Lok Sabha), searchable by words, ministry and member, each linked to the official answer PDF. Purchaser profiles list questions whose titles name the company. |
 | **State map** | Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
+| **Party profiles** | For each party: bonds received by year and top purchasers, MPs won in 2024, sitting MLAs by state, share of candidates declaring cases, and MP attendance. |
 | **Search everything** | Press `/` to search purchasers (including raw SBI spellings), candidates, MLAs, NGOs, MPs and questions at once. |
 | **Shareable links** | The URL records the open tab, state, purchaser or NGO, so any view can be bookmarked or sent. |
 | **Open data releases** | `python -m app.cli export-release` writes every table as gzipped CSV with a manifest of row counts, checksums and sources. |

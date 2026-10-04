@@ -99,3 +99,6 @@ export const useSearch = (q) =>
     enabled: q.trim().length >= 2,
     placeholderData: keepPreviousData,
   });
+
+export const usePartyProfile = (id) =>
+  useQuery({ queryKey: ['party', id], queryFn: () => apiGet(`/api/v1/parties/${encodeURIComponent(id)}/profile`), enabled: !!id });

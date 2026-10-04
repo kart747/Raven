@@ -30,7 +30,7 @@ function monthlySeries(profile) {
   return series;
 }
 
-export default function DonorProfile({ donorId, onClose }) {
+export default function DonorProfile({ donorId, onClose, onOpenParty }) {
   const { data: p, isLoading, isError } = useDonorProfile(donorId);
   if (donorId == null) return null;
 
@@ -132,7 +132,9 @@ export default function DonorProfile({ donorId, onClose }) {
                     {p.by_party.map((row) => (
                       <div key={row.party_id} className="text-xs">
                         <div className="flex justify-between">
-                          <span className="text-slate-200">{row.party_name}</span>
+                          <button onClick={() => onOpenParty?.(row.party_id)} className="text-slate-200 hover:text-cyan-400 text-left">
+                            {row.party_name}
+                          </button>
                           <span className="text-emerald-400 font-bold">{formatCrore(row.amount)}</span>
                         </div>
                         <div className="h-1.5 bg-slate-900 rounded mt-1">

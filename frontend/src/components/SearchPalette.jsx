@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Award, Building2, ExternalLink, Landmark, MessageSquareText, Search, UserCheck, X } from 'lucide-react';
+import { Award, Building2, ExternalLink, Flag, Landmark, MessageSquareText, Search, UserCheck, X } from 'lucide-react';
 import { useSearch } from '../lib/queries';
 import Spinner from './ui/Spinner';
 
 const GROUPS = [
+  { key: 'parties', label: 'Parties', icon: Flag },
   { key: 'purchasers', label: 'Bond purchasers', icon: Landmark },
   { key: 'candidates', label: 'Candidates & MLAs', icon: Award },
   { key: 'ngos', label: 'NGOs', icon: Building2 },
@@ -19,6 +20,7 @@ function useDebounced(value, ms) {
 
 function describe(group, item) {
   switch (group) {
+    case 'parties': return { title: item.name, sub: item.id };
     case 'purchasers': return { title: item.name };
     case 'candidates': return { title: item.name, sub: `${item.constituency}, ${item.state} · ${item.election || ''}${item.is_winner ? ' · won' : ''}`, href: item.source_url };
     case 'ngos': return { title: item.name, sub: `${item.state} · FCRA ${item.fcra_registration_number}` };
@@ -29,7 +31,7 @@ function describe(group, item) {
 }
 
 /** Search across every dataset. Opens with the header button or the "/" key. */
-export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState }) {
+export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty }) {
   const [q, setQ] = useState('');
   const input = useRef(null);
   const debounced = useDebounced(q, 250);
@@ -44,7 +46,8 @@ export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, o
   if (!open) return null;
 
   const choose = (group, item) => {
-    if (group === 'purchasers') onOpenDonor(item.id);
+    if (group === 'parties') onOpenParty(item.id);
+    else if (group === 'purchasers') onOpenDonor(item.id);
     else if (group === 'ngos') onOpenNgo(item.id);
     else if (group === 'mps') onOpenState(item.state);
     else return; // candidates and questions are links to the source
@@ -57,7 +60,7 @@ export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, o
         <div className="flex items-center gap-3 px-4 border-b border-slate-900">
           <Search className="w-4 h-4 text-slate-500" />
           <input ref={input} value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="Search companies, candidates, MLAs, NGOs, MPs, questions..."
+            placeholder="Search parties, companies, candidates, MLAs, NGOs, MPs, questions..."
             className="flex-1 py-4 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none" />
           {isFetching && <Spinner />}
           <button onClick={onClose} className="p-1 text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>

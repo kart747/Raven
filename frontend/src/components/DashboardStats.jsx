@@ -20,7 +20,7 @@ const PARTY_COLORS = {
 
 const DEFAULT_COLORS = ['#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#10b981'];
 
-export default function DashboardStats({ stats, loading, onOpenDonor }) {
+export default function DashboardStats({ stats, loading, onOpenDonor, onOpenParty }) {
   if (loading || !stats) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -182,14 +182,15 @@ export default function DashboardStats({ stats, loading, onOpenDonor }) {
           {/* Inline Legend */}
           <div className="grid grid-cols-3 gap-x-2 gap-y-1.5 mt-4 text-[9px] text-slate-400 border-t border-slate-900 pt-3">
             {partyData.slice(0, 6).map((item, idx) => (
-              <div key={item.name} className="flex items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap">
+              <button key={item.name} onClick={() => onOpenParty?.(item.name)} title={`${item.fullName}: open party profile`}
+                className="flex items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap hover:text-white">
                 <span 
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: PARTY_COLORS[item.name] || DEFAULT_COLORS[idx % DEFAULT_COLORS.length] }}
                 ></span>
                 <span className="font-semibold text-slate-300">{item.name}</span>
                 <span>{item.percentage.toFixed(0)}%</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
