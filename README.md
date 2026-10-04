@@ -167,6 +167,7 @@ docker-compose.yml  Postgres + API + web
 - Candidate figures are self-declared. **"Criminal cases" are pending cases declared in the affidavit, not convictions.**
 - A date overlap between a bond and an event is **not** evidence of a connection, and the UI says so.
 - Question-to-company links are exact matches of a company's distinctive name in the question *title* only. Single-word names, generic names and individuals are never matched, so some real mentions are missed by design.
+- Lok Sabha 2024 includes every candidate MyNeta analysed. About 580 of them don't appear on MyNeta's constituency lists and MyNeta gives no reason; they are included (as in ADR's published totals) and never marked as winners.
 - MyNeta's paginated lists skip rows, so Lok Sabha candidates are read constituency by constituency and MLAs are checked against MyNeta's published totals; each import reports any shortfall.
 
 ## Roadmap

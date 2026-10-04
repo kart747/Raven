@@ -238,6 +238,14 @@ def candidate_page_figures(slug: str, candidate_id: int) -> tuple[float, float] 
     return parse_rupees(assets.group(1)), parse_rupees(liabilities.group(1))
 
 
+def candidate_page_state(slug: str, candidate_id: int) -> str | None:
+    """State from the candidate page title: 'Name(Party):Constituency- SEAT(STATE) - Affidavit ...'."""
+    soup = BeautifulSoup(fetch(f"{election_url(slug)}candidate.php?candidate_id={candidate_id}"), "html.parser")
+    title = soup.title.get_text(" ", strip=True) if soup.title else ""
+    m = re.search(r"Constituency-\s*.+\(([^()]+)\)\s*-\s*Affidavit", title)
+    return canonical_state(m.group(1)) if m else None
+
+
 def _fill_figures(slug: str, rows: list[dict], text_rows: dict[int, dict]) -> int:
     """Fill missing assets/liabilities from summary listings, then candidate pages. Returns rows still missing."""
     missing = 0
@@ -317,6 +325,20 @@ def run_import() -> dict:
     # (one pass over all candidates, plus winners across sort orders), then candidate pages for the rest.
     text_rows = summary_rows(slug, "candidates_analyzed", max_sorts=1)
     text_rows.update(summary_rows(slug, "winner_analyzed", expected=totals.get("winners")))
+
+    # Candidates MyNeta analysed (and counts in its published total) but doesn't show on any constituency
+    # list. MyNeta gives no reason, so they are included as analysed candidates and never marked as winners.
+    on_lists = len(rows)
+    states_by_seat: dict[str, set] = {}
+    for r in rows.values():
+        states_by_seat.setdefault(r["constituency"], set()).add(r["state"])
+    for cid, t in text_rows.items():
+        if cid in rows:
+            continue
+        seat_states = states_by_seat.get(t["constituency"], set())
+        state = next(iter(seat_states)) if len(seat_states) == 1 else candidate_page_state(slug, cid)
+        rows[cid] = {**t, "state": state or "Unknown", "is_winner": False}
+
     rows_list = list(rows.values())
     needed = sum(r["assets"] is None and r["candidate_id"] not in text_rows for r in rows_list)
     print(f"Lok Sabha: {len(rows_list)} candidates; {needed} need their own candidate page for figures", flush=True)
@@ -324,6 +346,8 @@ def run_import() -> dict:
     _replace_election("Lok Sabha 2024", "Lok Sabha", ELECTION_YEAR, rows_list, legacy_year=ELECTION_YEAR)
     return {
         "candidates_imported": len(rows_list),
+        "on_constituency_lists": on_lists,
+        "analysed_not_on_lists": len(rows_list) - on_lists,
         "published_total": totals.get("candidates"),
         "winners": sum(r["is_winner"] for r in rows_list),
         "published_winners": totals.get("winners"),
