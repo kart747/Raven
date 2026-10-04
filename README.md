@@ -56,6 +56,7 @@ back to the original source on every record.
 | Candidate affidavits (Lok Sabha 2024 and all 31 state/UT assemblies) | [MyNeta](https://myneta.info/) (ADR) | Scraped, rate-limited, cached |
 | MP activity, bills & questions (ODbL-1.0) | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity), from sansad.in | Downloaded on import |
 | Press releases | PIB RSS (English national feed) | Live, cached 15 minutes |
+| State boundaries (map) | [DataMeet `States/Admin2`](https://github.com/datameet/maps/tree/master/States) (MIT), updated to the Survey of India map incl. Ladakh and J&K | Bundled (`frontend/public/india.geojson`) |
 | Optional: FCRA status, purchaser industry and events | Your own sourced CSVs, see [data/README.md](data/README.md) | `data/*.csv` |
 
 Each source keeps its own licence. Raven stores derived records, not copies of the source repositories.

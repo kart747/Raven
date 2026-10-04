@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, GeoJSON } from 'react-leaflet';
+import { MapContainer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -11,11 +11,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
-const GEO_NAME_FIXES = {
-  'Pondicherry': 'Puducherry',
-  'Dadra and Nagar Haveli': 'Dadra and Nagar Haveli and Daman and Diu',
-  'Daman and Diu': 'Dadra and Nagar Haveli and Daman and Diu',
-};
 
 const crore = (v) => `₹${((v || 0) / 1e7).toLocaleString('en-IN', { maximumFractionDigits: 0 })} Cr`;
 const percent = (v) => `${Math.round(v)}%`;
@@ -46,6 +41,15 @@ function buildMetrics({ lsSummary = {}, vsSummary = {}, ngoTotals = {} }) {
   ];
 }
 
+/** Zoom so the whole country (including Ladakh and the islands) is visible. */
+function FitToData({ data }) {
+  const map = useMap();
+  useEffect(() => {
+    if (data) map.fitBounds(L.geoJSON(data).getBounds(), { padding: [6, 6] });
+  }, [data, map]);
+  return null;
+}
+
 const SHADES = { high: '#06b6d4', mid: '#0e7490', low: '#1e4d5c', none: '#1e293b' };
 
 export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSummary, ngoTotals }) {
@@ -63,10 +67,7 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
         return res.json();
       })
       .then((data) => {
-        // Align map names with the canonical names used by the backend (app/states.py)
-        data.features.forEach((f) => {
-          f.properties.name = GEO_NAME_FIXES[f.properties.name] || f.properties.name;
-        });
+        // Boundaries follow the Survey of India map; names already match app/states.py
         setGeoJsonData(data);
         setLoading(false);
       })
@@ -149,15 +150,16 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
         ))}
       </div>
 
-      <div className="relative w-full h-[320px] rounded-xl overflow-hidden border border-slate-900/60 bg-slate-950/40">
+      <div className="relative w-full h-[400px] rounded-xl overflow-hidden border border-slate-900/60 bg-slate-950/40">
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-slate-400 bg-slate-950/50">
             <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
             <span>Loading map...</span>
           </div>
         ) : geoJsonData ? (
-          <MapContainer center={[22.5937, 78.9629]} zoom={4} scrollWheelZoom={false} zoomControl={false}
-            className="w-full h-full" style={{ background: 'transparent' }}>
+          <MapContainer center={[22.5937, 78.9629]} zoom={4} zoomSnap={0.25} scrollWheelZoom={false} zoomControl={false}
+            attributionControl={false} className="w-full h-full" style={{ background: 'transparent' }}>
+            <FitToData data={geoJsonData} />
             <GeoJSON
               key={`${metricId}-${selectedState || 'none'}-${values.length}`}
               data={geoJsonData}
@@ -186,6 +188,10 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
         <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: SHADES.low }}></span><span>&lt; {metric.format(t1)}</span></div>
         <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: SHADES.none }}></span><span>No data</span></div>
       </div>
+      <p className="mt-2 text-[9px] text-slate-600">
+        Boundaries as per the Survey of India map, from{' '}
+        <a href="https://github.com/datameet/maps/tree/master/States" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">DataMeet</a>.
+      </p>
     </div>
   );
 }
