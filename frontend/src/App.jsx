@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AlertCircle, Award, BarChart3, Database, Globe, Landmark, Sparkles, UserCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, Award, BarChart3, Database, Globe, Landmark, Search, Sparkles, UserCheck } from 'lucide-react';
 import DashboardStats from './components/DashboardStats';
 import IndiaMap from './components/IndiaMap';
 import DonationsTable from './components/DonationsTable';
@@ -9,6 +9,9 @@ import LegislativeTracker from './components/LegislativeTracker';
 import Sources from './components/Sources';
 import BriefViewer from './components/BriefViewer';
 import DonorProfile from './components/DonorProfile';
+import NgoDetailModal from './components/ngos/NgoDetailModal';
+import SearchPalette from './components/SearchPalette';
+import useHashParams from './lib/useHashParams';
 import PibTicker from './components/dashboard/PibTicker';
 import StateDossier from './components/dashboard/StateDossier';
 import { useCandidateStateSummary, useDashboardStats, useParties } from './lib/queries';
@@ -24,9 +27,26 @@ const TABS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedState, setSelectedState] = useState(null);
-  const [donorId, setDonorId] = useState(null);
+  // View state lives in the URL hash so any view can be bookmarked or shared
+  const [hash, setHash] = useHashParams();
+  const activeTab = TABS.some((t) => t.id === hash.tab) ? hash.tab : 'dashboard';
+  const selectedState = hash.state || null;
+  const donorId = hash.donor ? Number(hash.donor) : null;
+  const ngoId = hash.ngo ? Number(hash.ngo) : null;
+  const setActiveTab = (tab) => setHash({ tab: tab === 'dashboard' ? null : tab });
+  const setSelectedState = (state) => setHash({ state });
+  const setDonorId = (id) => setHash({ donor: id });
+  const setNgoId = (id) => setHash({ ngo: id });
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => {
+      const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+      if (e.key === '/' && !typing) { e.preventDefault(); setSearchOpen(true); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const { data: parties = [] } = useParties();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
@@ -50,7 +70,7 @@ export default function App() {
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => { setActiveTab(id); if (id === 'dashboard') setSelectedState(null); }}
+                onClick={() => setHash({ tab: id === 'dashboard' ? null : id, state: id === 'dashboard' ? null : selectedState })}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   activeTab === id
                     ? 'bg-slate-900 border border-slate-800 text-cyan-400 font-bold shadow-sm'
@@ -62,6 +82,11 @@ export default function App() {
               </button>
             ))}
           </nav>
+
+          <button onClick={() => setSearchOpen(true)} title="Search everything (press /)"
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-700">
+            <Search className="w-3.5 h-3.5" /> Search <kbd className="text-[10px] text-slate-600">/</kbd>
+          </button>
         </div>
       </header>
 
@@ -92,13 +117,21 @@ export default function App() {
 
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
         {activeTab === 'candidates' && <CandidatesTable parties={parties} initialFilterState={selectedState} />}
-        {activeTab === 'ngos' && <NgosTracker />}
+        {activeTab === 'ngos' && <NgosTracker onOpenNgo={setNgoId} />}
         {activeTab === 'legislative' && <LegislativeTracker />}
         {activeTab === 'brief' && <BriefViewer />}
         {activeTab === 'sources' && <Sources />}
       </main>
 
       <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} />
+      <NgoDetailModal ngoId={ngoId} onClose={() => setNgoId(null)} />
+      <SearchPalette
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onOpenDonor={setDonorId}
+        onOpenNgo={setNgoId}
+        onOpenState={(state) => setHash({ tab: null, state })}
+      />
 
       <footer className="bg-slate-950 border-t border-slate-900 mt-12 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4">

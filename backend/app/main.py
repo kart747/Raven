@@ -12,7 +12,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from sqlalchemy import case, desc, func
+from sqlalchemy import case, desc, func, or_
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas
@@ -726,6 +726,63 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
         "note": "Dates are encashment dates. Events are loaded from a sourced CSV and shown for "
                 "reference only; a date overlap is not evidence of a connection.",
     }
+
+
+# --- Search across every dataset ---
+@app.get("/api/v1/search")
+def search_everything(
+    q: str = Query(..., min_length=2, max_length=100),
+    per_group: int = Query(5, ge=1, le=20),
+    db: Session = Depends(get_db),
+):
+    """One query across purchasers (incl. raw SBI spellings), candidates, NGOs, MPs and questions."""
+    like = f"%{q.strip()}%"
+    out = {}
+
+    alias_hits = db.query(models.DonorAlias.donor_id).filter(models.DonorAlias.raw_name.ilike(like))
+    donors = db.query(models.Donor).filter(
+        models.Donor.name != "UNKNOWN DONOR",
+        or_(models.Donor.name.ilike(like), models.Donor.id.in_(alias_hits)),
+    )
+    out["purchasers"] = {
+        "total": donors.order_by(None).count(),
+        "items": [{"id": d.id, "name": d.name} for d in donors.order_by(models.Donor.name).limit(per_group)],
+    }
+
+    cands = db.query(models.Candidate).filter(
+        or_(models.Candidate.name.ilike(like), models.Candidate.constituency.ilike(like)))
+    out["candidates"] = {
+        "total": cands.order_by(None).count(),
+        "items": [
+            {"id": c.id, "name": c.name, "constituency": c.constituency, "state": c.state,
+             "election": c.election, "is_winner": c.is_winner, "source_url": c.source_url}
+            for c in cands.order_by(desc(models.Candidate.is_winner), desc(models.Candidate.assets)).limit(per_group)
+        ],
+    }
+
+    ngos = db.query(models.NGO).filter(
+        or_(models.NGO.name.ilike(like), models.NGO.fcra_registration_number.ilike(like)))
+    out["ngos"] = {
+        "total": ngos.order_by(None).count(),
+        "items": [{"id": n.id, "name": n.name, "state": n.state, "fcra_registration_number": n.fcra_registration_number}
+                  for n in ngos.order_by(models.NGO.name).limit(per_group)],
+    }
+
+    mps = db.query(models.MPActivity).filter(
+        or_(models.MPActivity.mp_name.ilike(like), models.MPActivity.constituency.ilike(like)))
+    out["mps"] = {
+        "total": mps.order_by(None).count(),
+        "items": [{"id": m.id, "name": m.mp_name, "constituency": m.constituency, "state": m.state_represented,
+                   "party": m.party_name} for m in mps.order_by(models.MPActivity.mp_name).limit(per_group)],
+    }
+
+    questions = db.query(models.ParliamentQuestion).filter(models.ParliamentQuestion.title.ilike(like))
+    out["questions"] = {
+        "total": questions.order_by(None).count(),
+        "items": [_question_dict(x) for x in
+                  questions.order_by(desc(models.ParliamentQuestion.date)).limit(per_group)],
+    }
+    return out
 
 
 # --- Lok Sabha questions ---

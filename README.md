@@ -39,6 +39,9 @@ back to the original source on every record.
 | **Lok Sabha questions** | Every question asked since 2009 (15th–18th Lok Sabha), searchable by words, ministry and member, each linked to the official answer PDF. Purchaser profiles list questions whose titles name the company. |
 | **State map** | Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
+| **Search everything** | Press `/` to search purchasers (including raw SBI spellings), candidates, MLAs, NGOs, MPs and questions at once. |
+| **Shareable links** | The URL records the open tab, state, purchaser or NGO, so any view can be bookmarked or sent. |
+| **Open data releases** | `python -m app.cli export-release` writes every table as gzipped CSV with a manifest of row counts, checksums and sources. |
 | **Data quality** | Live report of match rates, gaps and last-loaded times for every dataset. |
 
 ## Data sources
@@ -93,6 +96,7 @@ python -m app.cli ingest-questions    # Lok Sabha questions since 2009 + purchas
 python -m app.cli ingest-events       # sourced purchaser events
 python -m app.cli brief               # regenerate the AI brief
 python -m app.cli ingest-fcra-status LIST.xlsx --status Cancelled --source-url URL
+python -m app.cli export-release      # CSV + manifest bundle in data/releases/
 ```
 
 ### Docker (Postgres)

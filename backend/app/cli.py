@@ -11,6 +11,7 @@ Data management commands. Run from backend/:
     python -m app.cli ingest-questions     # Lok Sabha questions 2009-now, linked to bond purchasers
     python -m app.cli ingest-events        # sourced events about purchasers (data/entity_events.csv)
     python -m app.cli brief                # regenerate the AI brief
+    python -m app.cli export-release       # open data release: CSVs + manifest in data/releases/
     python -m app.cli ingest-all           # all of the above, in order
 """
 import argparse
@@ -72,6 +73,11 @@ def brief():
     generate_and_save_weekly_brief()
 
 
+def export_release():
+    from .export_release import run_export
+    print(json.dumps(run_export(), indent=2))
+
+
 def ingest_fcra_status(args):
     from .import_fcra_status import run_import
     print(json.dumps(run_import(args.file, args.status, args.source_url), indent=2))
@@ -87,6 +93,7 @@ COMMANDS = {
     "ingest-events": ingest_events,
     "ingest-questions": ingest_questions,
     "brief": brief,
+    "export-release": export_release,
 }
 
 

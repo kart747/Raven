@@ -91,3 +91,11 @@ export const useQuestionStats = (lokSabha) =>
 
 export const useQuestionMinistries = () =>
   useQuery({ queryKey: ['question-ministries'], queryFn: () => apiGet('/api/v1/questions/ministries') });
+
+export const useSearch = (q) =>
+  useQuery({
+    queryKey: ['search', q],
+    queryFn: () => apiGet('/api/v1/search', { q }),
+    enabled: q.trim().length >= 2,
+    placeholderData: keepPreviousData,
+  });

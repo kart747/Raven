@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Calendar, Globe } from 'lucide-react';
 import { useNgoStats } from '../lib/queries';
 import NgoSummaryCards from './ngos/NgoSummaryCards';
@@ -6,11 +5,9 @@ import NgoCharts from './ngos/NgoCharts';
 import NgoAlerts from './ngos/NgoAlerts';
 import NgoDirectory from './ngos/NgoDirectory';
 import NgoLedger from './ngos/NgoLedger';
-import NgoDetailModal from './ngos/NgoDetailModal';
 
-export default function NgosTracker() {
+export default function NgosTracker({ onOpenNgo }) {
   const { data: stats, isError } = useNgoStats();
-  const [openNgoId, setOpenNgoId] = useState(null);
 
   return (
     <div className="flex flex-col gap-8">
@@ -29,10 +26,9 @@ export default function NgosTracker() {
       {isError && <div className="text-xs text-red-400">Could not load NGO statistics. Is the API running?</div>}
       <NgoSummaryCards stats={stats} />
       {stats && <NgoCharts stats={stats} />}
-      {stats && <NgoAlerts stats={stats} onOpenNgo={setOpenNgoId} />}
-      <NgoDirectory onOpenNgo={setOpenNgoId} />
-      <NgoLedger onOpenNgo={setOpenNgoId} />
-      <NgoDetailModal ngoId={openNgoId} onClose={() => setOpenNgoId(null)} />
+      {stats && <NgoAlerts stats={stats} onOpenNgo={onOpenNgo} />}
+      <NgoDirectory onOpenNgo={onOpenNgo} />
+      <NgoLedger onOpenNgo={onOpenNgo} />
     </div>
   );
 }

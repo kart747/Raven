@@ -27,3 +27,6 @@ backend/data_cache/
 
 # Local data overrides may contain unpublished research
 data/*.csv
+
+# Generated open-data releases (publish via GitHub Releases)
+data/releases/

@@ -36,7 +36,7 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 | MPLADS works | mplads.gov.in | What each MP spent their local-area fund on |
 | ~~Lok Sabha questions~~ ✅ done (`ingest-questions`, 2009 onwards) | Vonter / sansad.in | Who asked about which ministry, sector or company |
 | Rajya Sabha questions; full answer text | sansad.in PDFs | Search inside answers, not only titles |
-| SEBI, CCI and ED orders and press releases | Regulator websites | Structured, dated, sourced events for the purchaser timeline |
+| SEBI, CCI and ED orders and press releases | Regulator websites (SEBI's listing blocks automated access, so these go in via the sourced events CSV for now) | Structured, dated, sourced events for the purchaser timeline |
 
 ## Phase 2: Entity graph
 
@@ -54,10 +54,9 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 
 ## Phase 4: Platform
 
-- **Full-text search** across names, questions, orders and documents (Postgres FTS or Meilisearch).
+- ✅ **Search across datasets** (press `/`). Next: full-text ranking with Postgres FTS or Meilisearch.
 - **Public read-only API** with keys and rate limits, plus documented, versioned endpoints.
-- **Open data releases:** each data rebuild published as CSV and Parquet on GitHub Releases, with a changelog
-  and checksums.
+- ✅ **Open data releases:** `export-release` writes CSV + manifest with checksums. Next: Parquet and automatic publishing.
 - **Automated refresh:** GitHub Actions rebuild sources on a schedule and open a PR with the diff.
 - **Source archiving:** every source document snapshotted (Wayback Machine or our own store) so citations
   survive link rot.
@@ -66,7 +65,7 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 ## Phase 5: For journalists and researchers
 
 - **Alerts:** follow a company, party or MP and get notified when new records appear.
-- **Shareable views:** a permalink to any profile or chart, with its sources embedded.
+- ✅ **Shareable views:** the URL records tab, state, purchaser or NGO. Next: embeddable charts.
 - **Notebooks:** Jupyter examples showing how to answer real questions with the open data.
 - **Methodology pages:** for every dataset, how it's collected, cleaned and matched, and its known limits.
 
