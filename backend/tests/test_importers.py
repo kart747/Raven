@@ -427,3 +427,33 @@ def test_live_titles_never_keep_pan_numbers_or_private_recovery_orders():
     assert skip.search("Remittance Order dated October 01, 2026 issued under RC No. 9267 of 2026")
     assert not skip.search("Adjudication Order in the matter of SMC Global Securities Ltd")
     assert not skip.search("Corrigendum to the final order in the matter of Adani Group Companies")
+
+
+def test_live_stories_group_one_story_across_outlets_but_not_shared_words():
+    import datetime as dt
+    from app.live.stories import group
+    titles = [
+        ("en", "Neha Bora detained at Jantar Mantar protest against CEC"),
+        ("en", "AISA's Neha Bora picked up by police at Jantar Mantar, later released"),
+        ("en", "Police detain Neha Bora during Jantar Mantar march against CEC"),
+        ("en", "Gang held in connection with murder of VCK functionary"),
+        ("en", "Berhampur murder: Man slits friend's throat after money dispute"),
+        ("en", "Rajya Sabha polls: BJP fields Dinesh Arya from Uttarakhand"),
+        ("en", "BJP picks Nainital's Dinesh Arya for Rajya Sabha"),
+        ("hi", "राहुल गांधी ने चुनाव आयोग पर सवाल उठाए"),
+        ("hi", "चुनाव आयोग पर राहुल गांधी के तीखे सवाल"),
+        ("en", "Rahul Gandhi questions election commission"),
+        # unrelated headlines, so common words weigh little (as in a real day's feed)
+        ("en", "Monsoon withdraws from Gujarat, says weather office"), ("en", "Sensex closes higher on bank stocks"),
+        ("en", "Asian Games: India wins hockey gold"), ("en", "Kerala orders vigilance probe into road project"),
+        ("en", "Drought team inspects villages in Raichur"), ("en", "Police arrest two in Udupi fraud case"),
+    ]
+    t0 = dt.datetime(2026, 10, 4, 8)
+    items = [{"id": n, "title": t, "language": lang, "published_at": t0 + dt.timedelta(minutes=n)}
+             for n, (lang, t) in enumerate(titles)]
+    groups = {frozenset(i["id"] for i in g) for g in group(items)}
+    assert frozenset({0, 1, 2}) in groups              # one story from three outlets
+    assert frozenset({5, 6}) in groups
+    assert frozenset({7, 8}) in groups                 # Hindi headlines group among themselves...
+    assert frozenset({9}) in groups                    # ...and not with English ones
+    assert frozenset({3}) in groups and frozenset({4}) in groups   # sharing only "murder" is not a story

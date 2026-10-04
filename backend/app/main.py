@@ -1369,6 +1369,57 @@ def read_live_rss(
     return Response(xml, media_type="application/rss+xml; charset=utf-8")
 
 
+_stories_cache: dict = {}
+
+
+@app.get("/api/v1/live/stories")
+def read_live_stories(hours: int = Query(12, ge=1, le=72), limit: int = Query(20, ge=1, le=100),
+                      min_outlets: int = Query(2, ge=1, le=20), language: Optional[str] = Query(None, max_length=5),
+                      db: Session = Depends(get_db)):
+    """Recent headlines grouped into stories, ranked by how many different publishers carry each one."""
+    from urllib.parse import urlsplit
+    from .live.stories import group, representative
+    L = models.LiveItem
+    key = (hours, language, db.query(func.max(L.id)).scalar() or 0)   # recomputed only when new headlines arrive
+    if key not in _stories_cache:
+        query = db.query(L.id, L.title, L.language, L.published_at, L.source_key)\
+            .filter(L.published_at >= datetime.datetime.utcnow() - datetime.timedelta(hours=hours))
+        if language:
+            query = query.filter(L.language == language)
+        rows = [r._asdict() for r in query]
+        publisher = {k: urlsplit(h or "").netloc.removeprefix("www.") or k
+                     for k, h in db.query(models.LiveSource.key, models.LiveSource.homepage)}
+        ranked = []
+        for g in group(rows):
+            outlets = {publisher.get(r["source_key"], r["source_key"]) for r in g}
+            ranked.append({"outlets": len(outlets), "latest": max(r["published_at"] for r in g),
+                           "ids": [r["id"] for r in g], "lead": representative(g)["id"]})
+        ranked.sort(key=lambda s: (s["outlets"], s["latest"]), reverse=True)
+        if len(_stories_cache) > 32:
+            _stories_cache.clear()
+        _stories_cache[key] = ranked
+    chosen = [s for s in _stories_cache[key] if s["outlets"] >= min_outlets][:limit]
+    by_id = {d["id"]: d for d in _live_dicts(db, db.query(L).filter(L.id.in_([i for s in chosen for i in s["ids"]])).all())}
+    stories = []
+    for s in chosen:
+        items = sorted((by_id[i] for i in s["ids"] if i in by_id), key=lambda d: d["published_at"], reverse=True)
+        if not items:
+            continue
+        lead = by_id.get(s["lead"], items[0])
+        seen, mentions = set(), []
+        for d in items:
+            for m in d["mentions"]:
+                if (m["kind"], m["ref"]) not in seen:
+                    seen.add((m["kind"], m["ref"]))
+                    mentions.append(m)
+        stories.append({"lead": lead, "outlets": s["outlets"], "headlines": len(items), "items": items,
+                        "first_seen": min(d["published_at"] for d in items), "latest": items[0]["published_at"],
+                        "mentions": mentions})
+    return {"hours": hours, "stories": stories,
+            "note": "Grouped automatically by the words headlines share; a story can be split in two or joined with a "
+                    "related one. Outlets are distinct publishers."}
+
+
 @app.get("/api/v1/live/states")
 def read_live_states(hours: int = Query(24, ge=1, le=24 * 14), db: Session = Depends(get_db)):
     """Headlines naming each state over the last N hours (for the map)."""

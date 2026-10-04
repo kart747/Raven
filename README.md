@@ -31,7 +31,7 @@ back to the original source on every record.
 
 | Area | What you get |
 |---|---|
-| **Live** | Headlines from 56 public feeds: PIB, RBI and SEBI; national, political, state, court and fact-check desks; papers in nine Indian languages (Hindi, Marathi, Gujarati, Punjabi, Bengali, Tamil, Telugu, Kannada, Malayalam); and GDELT. Streamed to the browser as they arrive and tagged with the MPs, parties, bond purchasers and states they name, in English and in Indian scripts. Profiles and state panels show "In the news"; the map has a news layer; a trending panel shows who is named most in the last 24 hours. |
+| **Live** | Headlines from 56 public feeds: PIB, RBI and SEBI; national, political, state, court and fact-check desks; papers in nine Indian languages (Hindi, Marathi, Gujarati, Punjabi, Bengali, Tamil, Telugu, Kannada, Malayalam); and GDELT. Streamed to the browser as they arrive and tagged with the MPs, parties, bond purchasers and states they name, in English and in Indian scripts. **Top stories** groups headlines that report the same story and ranks stories by how many publishers carry them. Profiles and state panels show "In the news"; the map has a news layer; a trending panel shows who is named most in the last 24 hours. |
 | **Follow by RSS** | Any live view (an MP, party, purchaser, state, category, language or search) is also an RSS feed (`/api/v1/live/rss?kind=mp&ref=…`), so you can follow it in any feed reader without an account. |
 | **Key facts** | Plain statements computed live from the data (e.g. share of MPs declaring cases, largest bond recipient), each linking to the records behind it. No AI wording. |
 | **Electoral bonds** | All 20,384 encashed bonds (Apr 2019 – Feb 2024), joined to purchasers on the unique bond number. Search, filter by party, year or purchaser, export CSV. |
@@ -162,8 +162,8 @@ Frontend: `VITE_API_URL` points the UI at the API.
 - **States** use one canonical list so filters, imports and the map agree.
 - **Live layer** (`app/live/`): a catalogue of feeds, each with its own interval; a poller that checks robots.txt, sends
   conditional requests, backs off on errors and stores only headline, link and time; a tagger that links headlines to
-  Raven's MPs, parties, purchasers and states by exact name; and a server-sent-events stream (`/api/v1/live/stream`)
-  that pushes new rows to open browsers.
+  Raven's MPs, parties, purchasers and states by exact name; a story grouper (`/api/v1/live/stories`); and a
+  server-sent-events stream (`/api/v1/live/stream`) that pushes new rows to open browsers.
 
 ### Prior art
 
@@ -196,6 +196,7 @@ docker-compose.yml  Postgres + API + web
 - Question-to-company links are exact matches of a company's distinctive name in the question *title* only. Single-word names, generic names and individuals are never matched, so some real mentions are missed by design.
 - Lok Sabha by-elections (e.g. Wayanad and Nanded, Nov 2024) are kept as separate elections; Lok Sabha 2024 statistics use the 543 general-election seats.
 - Lok Sabha 2024 includes every candidate MyNeta analysed. About 580 of them don't appear on MyNeta's constituency lists and MyNeta gives no reason; they are included (as in ADR's published totals) and never marked as winners.
+- Top stories are grouped automatically by the words headlines share (rarer words count more; at least two must match). A story can be split in two or joined with a related one; the page says so.
 - Live headlines are not checked for accuracy; they are what each publisher published. PIB's feed has no times, so PIB items show when Raven first saw them; SEBI's gives dates only, which are shown as dates. Tags are exact name matches in the headline only; Indian-language tags come from a curated list (`app/live/aliases.py`), so they cover parties, states and well-known MPs, not every MP. The map's news layer reflects which publishers Raven follows as well as events.
 - SEBI debt-recovery orders and RTI appeals are left out of the live feed (they concern private individuals), and PAN numbers are removed from every headline.
 - MyNeta's paginated lists skip rows, so Lok Sabha candidates are read constituency by constituency and MLAs are checked against MyNeta's published totals; each import reports any shortfall.

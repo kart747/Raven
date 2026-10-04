@@ -46,7 +46,8 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 - ✅ **Declared-asset change** for re-contesting MPs and MLAs in 25 assemblies (`ingest-asset-growth`).
 - ✅ **Live headlines:** 56 public feeds (English and nine Indian languages) plus GDELT, polled politely, streamed to
   the browser and tagged with MPs, parties, purchasers and states in English and Indian scripts; "In the news" on
-  profiles and states; a news layer on the map; SEBI enforcement orders linked to bond purchasers. Next: Odia,
+  profiles and states; a news layer on the map; SEBI enforcement orders linked to bond purchasers; Top stories
+  ranked by how many publishers carry them. Next: Odia,
   Assamese and Urdu feeds, state government press releases, Gazette of India notifications, court cause lists.
 - ⏸ **Assembly seat map:** DataMeet's assembly boundaries are pre-delimitation for several states and have known shifts and
   name errors, so they are not used until a better source exists.
