@@ -315,3 +315,21 @@ def test_asset_comparison_parsing():
     from app.import_asset_growth import election_label
     assert election_label("LokSabha2019") == "Lok Sabha 2019"
     assert election_label("karnataka2018", "Karnataka") == "Karnataka 2018"
+
+
+def test_member_term_name_matching_is_conservative():
+    from app.import_member_terms import same_person
+    assert same_person("L. S. Tejasvi Surya", "Tejasvi Surya")
+    assert same_person("Dr. Shashi Tharoor", "Shashi Tharoor")
+    assert same_person("Chavda Vinod Lakhamashi", "Chavda Vinod Lakhamshi")   # spelling variant
+    assert not same_person("S.P.Y. Reddy", "Byreddy Shabari")   # father and daughter, same seat
+    assert same_person("C. R. Patil", "Chandrakant Raghunath Patil")
+    assert not same_person("K.C. Patel", "Dhaval Laxmanbhai Patel")   # predecessor, same seat
+    assert not same_person("P.L. Punia", "Tanuj Punia")               # father and son
+    assert not same_person("M. Selvaraj", "Selvaraj V")
+    assert same_person("Andimuthu Raja", "Raja A") and same_person("P. Balram", "Balram Naik Porika")
+    assert not same_person("Ananth Kumar", "Tejasvi Surya")
+    # the shorter name's words must all appear in the longer one (seat and state must also match when linking)
+    assert same_person("Vijay Kumar", "Vijay Kumar Hansdak")
+    assert not same_person("Rahul Kumar", "Pankaj Kumar")      # a shared surname alone is not enough
+    assert not same_person("A. K.", "A. K.")                  # initials only: nothing significant to compare

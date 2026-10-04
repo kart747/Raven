@@ -43,7 +43,7 @@ back to the original source on every record.
 | **State map** | Four layers (candidate assets, candidates declaring cases, MLAs declaring cases, NGO foreign funding). Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
 | **Candidate & MLA profiles** | Every candidate and sitting MLA: affidavit, change since their previous affidavit, everyone else who stood in the seat, and a link to the Parliament record for MPs. |
-| **MP profiles** | Each Lok Sabha MP's 2024 affidavit next to their parliamentary record: attendance, debates, every question since 2009 by ministry, and bills. |
+| **MP profiles** | Each Lok Sabha MP's 2024 affidavit next to their parliamentary record across terms (15th-18th Lok Sabha, linked only when seat, state and name all match): attendance, debates, questions by ministry, bills. |
 | **Party scoreboard** | Every party side by side: bonds received, MPs won in 2024, sitting MLAs, share of candidates and MLAs declaring cases, average MP assets. Sortable. |
 | **Party profiles** | For each party: bonds received by year and top purchasers, MPs won in 2024, sitting MLAs by state, share of candidates declaring cases, and MP attendance. |
 | **Search everything** | Press `/` to search purchasers (including raw SBI spellings), candidates, MLAs, NGOs, MPs and questions at once. |

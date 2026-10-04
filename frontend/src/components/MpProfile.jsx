@@ -73,7 +73,7 @@ export default function MpProfile({ mpId, onClose, onOpenParty }) {
                   ) : <p className="text-xs text-slate-500">No matching 2024 affidavit found for this seat.</p>}
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Questions by ministry ({m.questions_total.toLocaleString('en-IN')} since 2009)</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Questions by ministry ({m.questions_total.toLocaleString('en-IN')} across linked terms)</h4>
                   {m.questions_by_ministry.length ? (
                     <ul className="text-xs space-y-1">
                       {m.questions_by_ministry.map((x) => (
@@ -86,6 +86,33 @@ export default function MpProfile({ mpId, onClose, onOpenParty }) {
                   ) : <p className="text-xs text-slate-500">No questions found under this name.</p>}
                 </div>
               </div>
+
+              {m.career?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Record by Lok Sabha</h4>
+                  <div className="overflow-x-auto border border-slate-900 rounded-xl">
+                    <table className="w-full text-xs">
+                      <thead><tr className="text-[10px] text-slate-500 border-b border-slate-900">
+                        <th className="p-2 text-left">Term</th><th className="p-2 text-left">Seat · Party</th>
+                        <th className="p-2 text-right">Attendance</th><th className="p-2 text-right">Debates</th>
+                        <th className="p-2 text-right">Questions</th><th className="p-2 text-right">Bills</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-slate-900">
+                        {m.career.map((t) => (
+                          <tr key={t.lok_sabha}>
+                            <td className="p-2 text-slate-200">{t.lok_sabha}th</td>
+                            <td className="p-2 text-slate-300">{t.constituency}<span className="text-slate-500"> · {t.party}</span></td>
+                            <td className="p-2 text-right tabular-nums">{t.attendance_pct != null ? `${t.attendance_pct}%` : 'n/a'}</td>
+                            <td className="p-2 text-right tabular-nums">{t.debates ?? '—'}</td>
+                            <td className="p-2 text-right tabular-nums">{t.questions ?? '—'}</td>
+                            <td className="p-2 text-right tabular-nums">{t.private_member_bills ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {m.recent_questions.length > 0 && (
                 <div>

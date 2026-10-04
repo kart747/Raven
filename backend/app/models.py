@@ -253,3 +253,24 @@ class AssetComparison(Base):
     remarks = Column(String, nullable=True)
     source_url = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class MemberTerm(Base):
+    """One member's record in one Lok Sabha (15th onwards), from Vonter / sansad.in."""
+    __tablename__ = "member_terms"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lok_sabha = Column(Integer, nullable=False, index=True)
+    name = Column(String, nullable=False, index=True)        # spelling used in that term's records
+    constituency = Column(String, nullable=False)
+    state = Column(String, nullable=False, index=True)
+    party = Column(String, nullable=True)
+    attendance_pct = Column(Float, nullable=True)
+    debates = Column(Integer, nullable=True)
+    questions = Column(Integer, nullable=True)
+    private_member_bills = Column(Integer, nullable=True)
+    term_start = Column(String, nullable=True)
+    term_end = Column(String, nullable=True)
+    membership = Column(String, nullable=True)                # Elected / Nominated
+    source_url = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

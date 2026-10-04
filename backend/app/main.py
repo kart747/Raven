@@ -16,13 +16,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy import case, desc, func, or_
+from sqlalchemy import and_, case, desc, func, or_
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas
 from .brief_worker import generate_and_save_weekly_brief
 from .database import ensure_schema, get_db, SessionLocal
 from .pib_ingest import PIB_FEEDS, get_cached_pib_releases
+from .import_member_terms import career as member_career
 from .seats import alias as seat_alias
 from .seed import seed_db
 
@@ -1204,8 +1205,12 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
     seat_winners.sort(key=lambda c: (c.election != "Lok Sabha 2024", c.election or ""), reverse=True)
     affidavit = next((c for c in seat_winners if _seat_key(c.name) == _seat_key(mp.mp_name)), None) \
         or (seat_winners[0] if seat_winners else None)
-    q = db.query(Q).filter(Q.representative == mp.mp_name)
-    by_ministry = db.query(Q.ministry, func.count(Q.id)).filter(Q.representative == mp.mp_name)\
+    # Earlier terms (same seat, compatible name) let questions follow the member's own spelling in each term
+    terms = member_career(db, mp)
+    asked_by = or_(Q.representative == mp.mp_name,
+                   *[and_(Q.lok_sabha == t.lok_sabha, Q.representative == t.name) for t in terms])
+    q = db.query(Q).filter(asked_by)
+    by_ministry = db.query(Q.ministry, func.count(Q.id)).filter(asked_by)\
         .group_by(Q.ministry).order_by(desc(func.count(Q.id))).limit(8).all()
     bills = db.query(models.LegislativeBill).filter(models.LegislativeBill.introduced_by == mp.mp_name)\
         .order_by(desc(models.LegislativeBill.introduced_on)).all()
@@ -1232,6 +1237,12 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
             "liabilities": affidavit.liabilities, "criminal_cases": affidavit.criminal_cases,
             "education": affidavit.education, "source_url": affidavit.source_url,
         },
+        "career": [
+            {"lok_sabha": t.lok_sabha, "name": t.name, "constituency": t.constituency, "party": t.party,
+             "attendance_pct": t.attendance_pct, "debates": t.debates, "questions": t.questions,
+             "private_member_bills": t.private_member_bills, "term_start": t.term_start, "term_end": t.term_end}
+            for t in terms
+        ],
         "questions_total": q.order_by(None).count(),
         "questions_by_ministry": [{"ministry": m, "count": n} for m, n in by_ministry],
         "recent_questions": [_question_dict(x) for x in q.order_by(desc(Q.date)).limit(30)],
@@ -1239,7 +1250,8 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
                    "official_url": b.official_url} for b in bills],
         "notes": [
             "Affidavit matched by constituency and state (one MP per seat).",
-            "Questions cover the 15th-18th Lok Sabha where this member's name matches.",
+            "Earlier terms are linked only when the seat, state and name all match; terms in a different seat are not shown.",
+            "Questions cover the 15th-18th Lok Sabha for the linked terms.",
             "'Criminal cases' are pending cases declared in the affidavit, not convictions.",
         ],
     }

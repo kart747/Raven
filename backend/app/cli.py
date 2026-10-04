@@ -9,6 +9,7 @@ Data management commands. Run from backend/:
     python -m app.cli ingest-assemblies    # sitting MLAs: winners of each state's latest assembly election (MyNeta)
     python -m app.cli ingest-asset-growth  # assets 2019 -> 2024 of re-contesting 2019 MPs (MyNeta)
     python -m app.cli ingest-legislative   # Lok Sabha MP activity + private member bills
+    python -m app.cli ingest-member-terms  # Lok Sabha members, 15th-18th, for MP careers
     python -m app.cli ingest-questions     # Lok Sabha questions 2009-now, linked to bond purchasers
     python -m app.cli ingest-events        # sourced events about purchasers (data/entity_events.csv)
     python -m app.cli brief                # regenerate the AI brief
@@ -61,6 +62,11 @@ def ingest_asset_growth():
     print(json.dumps(run_import(), indent=2))
 
 
+def ingest_member_terms():
+    from .import_member_terms import run_import
+    print(json.dumps(run_import(), indent=2))
+
+
 def ingest_events():
     from .import_events import run_import
     print(json.dumps(run_import(), indent=2))
@@ -103,6 +109,7 @@ COMMANDS = {
     "ingest-assemblies": ingest_assemblies,
     "ingest-asset-growth": ingest_asset_growth,
     "ingest-legislative": ingest_legislative,
+    "ingest-member-terms": ingest_member_terms,
     "ingest-events": ingest_events,
     "ingest-questions": ingest_questions,
     "brief": brief,
@@ -126,7 +133,7 @@ def main():
     elif args.command == "export-release":
         export_release(args.previous)
     elif args.command == "ingest-all":
-        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-asset-growth", "ingest-legislative", "ingest-questions", "ingest-events", "brief"):
+        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-asset-growth", "ingest-legislative", "ingest-member-terms", "ingest-questions", "ingest-events", "brief"):
             print(f"\n=== {name} ===")
             COMMANDS[name]()
     else:
