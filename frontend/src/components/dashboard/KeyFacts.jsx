@@ -2,6 +2,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { useInsights } from '../../lib/queries';
 import { useContext } from 'react';
 import { LangContext, useT } from '../../lib/i18n';
+import EmbedButton from '../ui/EmbedButton';
 
 const KIND_COLOURS = {
   bonds: 'border-l-cyan-500',
@@ -25,7 +26,7 @@ export default function KeyFacts({ onNavigate }) {
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('facts.title')}</h2>
-        <span className="text-[10px] text-slate-500">{t('facts.note')}</span>
+        <span className="flex items-center gap-2 text-[10px] text-slate-500">{t('facts.note')} <EmbedButton id="facts" height={420} /></span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         {facts.map((f) => (

@@ -3,6 +3,7 @@ import { MapContainer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useT } from '../lib/i18n';
+import EmbedButton from './ui/EmbedButton';
 
 // Fix Leaflet's default marker icon paths in webpack/vite environments
 delete L.Icon.Default.prototype._getIconUrl;
@@ -130,6 +131,8 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('map.title')}</h3>
           <p className="text-[10px] text-slate-400">{metric.note}. {t('map.click')}</p>
         </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+        <EmbedButton id="map" height={640} />
         <button
           onClick={() => onSelectState(null)}
           className={`flex-shrink-0 px-3 py-1 text-[10px] font-bold uppercase rounded-full border transition-all ${
@@ -140,6 +143,7 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
         >
           {t('map.allIndia')}
         </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1 mb-3">

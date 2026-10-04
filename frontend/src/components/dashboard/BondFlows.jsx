@@ -3,6 +3,7 @@ import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { formatCrore } from '../../lib/format';
 import { useBondFlows } from '../../lib/queries';
 import Spinner from '../ui/Spinner';
+import EmbedButton from '../ui/EmbedButton';
 
 const truncate = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -37,7 +38,8 @@ export default function BondFlows({ onOpenDonor, onOpenParty }) {
             {' '}Click a name to open its profile.
           </p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
+          <EmbedButton id="flows" height={620} />
           {[10, 15, 25].map((n) => (
             <button key={n} onClick={() => setTop(n)}
               className={`px-2.5 py-1 rounded-md text-[11px] border ${top === n ? 'border-cyan-700 text-cyan-300 bg-cyan-950/50' : 'border-slate-800 text-slate-400 hover:text-white'}`}>

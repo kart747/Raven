@@ -69,7 +69,8 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 ## Phase 5: For journalists and researchers
 
 - **Alerts:** follow a company, party or MP and get notified when new records appear.
-- ✅ **Shareable views:** the URL records tab, state, purchaser or NGO. Next: embeddable charts.
+- ✅ **Shareable views:** the URL records tab, state, purchaser, party, MP or NGO.
+- ✅ **Embeddable charts:** `#embed=flows|facts|map` with an Embed button that copies an `<iframe>` snippet.
 - **Notebooks:** Jupyter examples showing how to answer real questions with the open data.
 - **Methodology pages:** for every dataset, how it's collected, cleaned and matched, and its known limits.
 

@@ -23,6 +23,14 @@ const MpProfile = lazy(() => import('./components/MpProfile'));
 const NgoDetailModal = lazy(() => import('./components/ngos/NgoDetailModal'));
 const SearchPalette = lazy(() => import('./components/SearchPalette'));
 
+// Widgets available at #embed=<id> for use in <iframe>s
+const EMBEDS = {
+  flows: (p) => <BondFlows onOpenDonor={p.onOpenDonor} onOpenParty={p.onOpenParty} />,
+  facts: (p) => <KeyFacts onNavigate={p.onNavigate} />,
+  map: (p) => <IndiaMap selectedState={null} onSelectState={p.onSelectState}
+    lsSummary={p.lsSummary} vsSummary={p.vsSummary} ngoTotals={p.ngoTotals} />,
+};
+
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'donations', label: 'Electoral Bonds', icon: Landmark },
@@ -52,6 +60,7 @@ export default function App() {
   const setMpId = (id) => setHash({ mp: id });
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const embed = hash.embed;
   useEffect(() => {
     const onKey = (e) => {
       const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
@@ -66,6 +75,26 @@ export default function App() {
   const { data: stateStats = {} } = useCandidateStateSummary();
   const { data: mlaStats = {} } = useCandidateStateSummary('Vidhan Sabha');
   const { data: ngoTotals = {} } = useNgoStateTotals();
+
+  if (EMBEDS[embed]) {
+    // Embed mode: one widget, a credit line, links open the full site
+    const open = (patch) => window.open(`${window.location.pathname}#${new URLSearchParams(
+      Object.entries(patch).filter(([, v]) => v != null)).toString()}`, '_blank', 'noopener');
+    return (
+      <LangContext.Provider value={lang}>
+        <div className="min-h-screen bg-slate-950 text-slate-100 p-3 flex flex-col gap-2">
+          {EMBEDS[embed]({
+            onOpenDonor: (donor) => open({ donor }), onOpenParty: (party) => open({ party }),
+            onNavigate: (link) => open(link), onSelectState: (state) => open({ state }),
+            lsSummary: stateStats, vsSummary: mlaStats, ngoTotals,
+          })}
+          <a href={window.location.pathname} target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-500 hover:text-slate-300">
+            Source: Raven, open public-records data on Indian politics · {window.location.host}
+          </a>
+        </div>
+      </LangContext.Provider>
+    );
+  }
 
   return (
     <LangContext.Provider value={lang}>
