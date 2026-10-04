@@ -16,7 +16,7 @@ const VIEWS = [
   { id: 'mla', label: 'Sitting MLAs (latest assembly elections)', params: { house: 'Vidhan Sabha' } },
 ];
 
-export default function CandidatesTable({ initialFilterState }) {
+export default function CandidatesTable({ initialFilterState, onOpenCandidate }) {
   const [view, setView] = useState('ls');
   const [election, setElection] = useState('');
   const [search, setSearch] = useState('');
@@ -128,7 +128,7 @@ export default function CandidatesTable({ initialFilterState }) {
               <tr key={c.id} className="hover:bg-slate-900/20 transition-all">
                 <td className="p-4">
                   <div className="font-bold text-white text-xs tracking-wide flex items-center gap-2">
-                    {c.name}
+                    <button onClick={() => onOpenCandidate?.(c.id)} className="hover:text-cyan-400 text-left">{c.name}</button>
                     {c.is_winner && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-950/60 border border-emerald-800/40 text-emerald-400">
                         WON

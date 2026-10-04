@@ -1131,6 +1131,50 @@ def read_party_profile(party_id: str, db: Session = Depends(get_db)):
     }
 
 
+# --- Candidate / MLA profile ---
+@app.get("/api/v1/candidates/{candidate_id}/profile")
+def read_candidate_profile(candidate_id: int, db: Session = Depends(get_db)):
+    C = models.Candidate
+    c = db.get(C, candidate_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    party = db.get(models.Party, c.party_id)
+    comparison = db.query(models.AssetComparison).filter(
+        models.AssetComparison.election == c.election,
+        models.AssetComparison.myneta_id == _myneta_id(c.source_url)).first()
+    seat = db.query(C).filter(C.election == c.election, C.state == c.state, C.constituency == c.constituency)\
+        .order_by(desc(C.is_winner), desc(C.assets)).all()
+
+    mp_id = None
+    if c.house == "Lok Sabha" and c.is_winner:
+        for mp in db.query(models.MPActivity).filter(models.MPActivity.state_represented == c.state):
+            if _seat_key(c.constituency) in (_seat_key(mp.constituency), _seat_key(seat_alias(mp.state_represented, mp.constituency))):
+                mp_id = mp.id
+                break
+
+    return {
+        "id": c.id, "name": c.name, "party_id": c.party_id, "party": party.name if party else c.party_id,
+        "state": c.state, "constituency": c.constituency, "election": c.election, "house": c.house,
+        "is_winner": c.is_winner, "assets": c.assets, "liabilities": c.liabilities,
+        "criminal_cases": c.criminal_cases, "education": c.education, "source_url": c.source_url,
+        "mp_id": mp_id,
+        "asset_change": None if not comparison else {
+            "previous_election": comparison.previous_election, "previous_assets": comparison.previous_assets,
+            "assets": comparison.assets, "remarks": comparison.remarks, "comparison_url": comparison.source_url,
+        },
+        "seat_field": [
+            {"id": o.id, "name": o.name, "party_id": o.party_id, "is_winner": o.is_winner,
+             "assets": o.assets, "criminal_cases": o.criminal_cases}
+            for o in seat
+        ],
+        "notes": [
+            "Figures are self-declared in the election affidavit (MyNeta / ADR).",
+            "'Criminal cases' are pending cases declared, not convictions.",
+        ] + (["Assembly records hold winners only, so other candidates in this seat are not listed."]
+             if c.house == "Vidhan Sabha" else []),
+    }
+
+
 # --- MP profile: affidavit + parliamentary record ---
 def _seat_key(constituency: str | None) -> str:
     """Constituency name normalised for matching across sources ('Bastar (ST)' == 'BASTAR')."""

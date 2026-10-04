@@ -24,7 +24,7 @@ function Failed() {
   return <div className="text-center text-xs text-red-400 py-8">Could not load this panel.</div>;
 }
 
-export function CandidatesPanel({ state, summary, house = 'Lok Sabha', noun = 'Candidates' }) {
+export function CandidatesPanel({ state, summary, house = 'Lok Sabha', noun = 'Candidates', onOpenCandidate }) {
   const { data, isLoading, isError } = useStateCandidates(state, house);
   const s = summary || { candidate_count: 0, total_assets: 0, total_cases: 0, candidates_with_cases: 0 };
   const rows = data?.data || [];
@@ -44,7 +44,7 @@ export function CandidatesPanel({ state, summary, house = 'Lok Sabha', noun = 'C
             {rows.length === 0 ? (
               <div className="text-center text-xs text-slate-500 py-4">No {noun.toLowerCase()} imported for this state (source: MyNeta).</div>
             ) : rows.map((c) => (
-              <a key={c.id} href={c.source_url} target="_blank" rel="noopener noreferrer" className={`${ROW} hover:border-slate-700 transition-all`}>
+              <button key={c.id} onClick={() => onOpenCandidate?.(c.id)} className={`${ROW} w-full text-left hover:border-slate-700 transition-all`}>
                 <div>
                   <strong className="text-white block truncate max-w-[160px]">
                     {c.name}{c.is_winner && house === 'Lok Sabha' && <span className="ml-1 text-[8px] text-emerald-400">WON</span>}
@@ -55,7 +55,7 @@ export function CandidatesPanel({ state, summary, house = 'Lok Sabha', noun = 'C
                   <span className="text-emerald-400 font-bold block">{formatCrore(c.assets)}</span>
                   <span className="text-[9px] text-slate-500">{c.criminal_cases} cases declared</span>
                 </div>
-              </a>
+              </button>
             ))}
           </div>
         )}

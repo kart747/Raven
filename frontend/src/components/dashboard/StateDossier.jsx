@@ -10,7 +10,7 @@ const TABS = [
   { id: 'legislative', label: 'state.tab.parl', source: 'Source: Lok Sabha activity (Vonter dataset)' },
 ];
 
-export default function StateDossier({ state, candidateSummary, onOpenMp }) {
+export default function StateDossier({ state, candidateSummary, onOpenMp, onOpenCandidate }) {
   const t = useT();
   const tr = t;
   const [tab, setTab] = useState('candidates');
@@ -34,8 +34,8 @@ export default function StateDossier({ state, candidateSummary, onOpenMp }) {
       </div>
 
       {state ? (
-        tab === 'candidates' ? <CandidatesPanel state={state} summary={candidateSummary} />
-          : tab === 'mlas' ? <CandidatesPanel state={state} summary={mlaSummary[state]} house="Vidhan Sabha" noun="Sitting MLAs" />
+        tab === 'candidates' ? <CandidatesPanel state={state} summary={candidateSummary} onOpenCandidate={onOpenCandidate} />
+          : tab === 'mlas' ? <CandidatesPanel state={state} summary={mlaSummary[state]} house="Vidhan Sabha" noun="Sitting MLAs" onOpenCandidate={onOpenCandidate} />
           : tab === 'ngos' ? <NgoPanel state={state} />
             : <LegislativePanel state={state} onOpenMp={onOpenMp} />
       ) : (

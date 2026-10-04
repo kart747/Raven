@@ -23,7 +23,7 @@ function describe(group, item) {
   switch (group) {
     case 'parties': return { title: item.name, sub: item.id };
     case 'purchasers': return { title: item.name };
-    case 'candidates': return { title: item.name, sub: `${item.constituency}, ${item.state} · ${item.election || ''}${item.is_winner ? ' · won' : ''}`, href: item.source_url };
+    case 'candidates': return { title: item.name, sub: `${item.constituency}, ${item.state} · ${item.election || ''}${item.is_winner ? ' · won' : ''}` };
     case 'ngos': return { title: item.name, sub: `${item.state} · FCRA ${item.fcra_registration_number}` };
     case 'mps': return { title: item.name, sub: `${item.constituency}, ${item.state} · ${item.party}` };
     case 'questions': return { title: item.title, sub: `${item.date} · ${item.representative}`, href: item.official_url };
@@ -32,7 +32,7 @@ function describe(group, item) {
 }
 
 /** Search across every dataset. Opens with the header button or the "/" key. */
-export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty, onOpenMp }) {
+export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty, onOpenMp, onOpenCandidate }) {
   const t = useT();
   const [q, setQ] = useState('');
   const input = useRef(null);
@@ -52,6 +52,7 @@ export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, o
     else if (group === 'purchasers') onOpenDonor(item.id);
     else if (group === 'ngos') onOpenNgo(item.id);
     else if (group === 'mps') onOpenMp(item.id);
+    else if (group === 'candidates') onOpenCandidate(item.id);
     else return; // candidates and questions are links to the source
     onClose();
   };

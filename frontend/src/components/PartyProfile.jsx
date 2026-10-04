@@ -16,7 +16,7 @@ function Stat({ label, value, sub }) {
 
 const pct = (part, whole) => (whole ? `${Math.round((100 * part) / whole)}%` : '—');
 
-export default function PartyProfile({ partyId, onClose, onOpenDonor }) {
+export default function PartyProfile({ partyId, onClose, onOpenDonor, onOpenCandidate }) {
   const { data: p, isLoading, isError } = usePartyProfile(partyId);
   if (!partyId) return null;
 
@@ -88,14 +88,13 @@ export default function PartyProfile({ partyId, onClose, onOpenDonor }) {
                   </p>
                   <div className="max-h-64 overflow-y-auto pr-1 flex flex-col gap-1">
                     {p.lok_sabha_2024.mps.map((m) => (
-                      <a key={m.id} href={m.source_url} target="_blank" rel="noopener noreferrer"
-                        className="flex justify-between gap-3 text-xs p-1.5 rounded hover:bg-slate-900">
+                      <button key={m.id} onClick={() => onOpenCandidate(m.id)}
+                        className="w-full text-left flex justify-between gap-3 text-xs p-1.5 rounded hover:bg-slate-900">
                         <span className="text-slate-200 truncate">{m.name} <span className="text-slate-500">· {m.constituency}, {m.state}</span></span>
                         <span className="text-slate-400 flex-shrink-0 flex items-center gap-1">
                           {formatCrore(m.assets, 1)}{m.criminal_cases > 0 && <span className="text-red-400"> · {m.criminal_cases} cases</span>}
-                          <ExternalLink className="w-3 h-3" />
                         </span>
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </div>

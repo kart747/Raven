@@ -270,6 +270,12 @@ with TestClient(app_module.app) as c:
 
     summary = c.get("/api/v1/candidates/state-summary").json()
     assert summary["Kerala"]["candidate_count"] == 2                     # general election only
+
+    asha = db.query(m.Candidate.id).filter(m.Candidate.name == "Asha Rao").scalar()
+    prof = c.get(f"/api/v1/candidates/{asha}/profile").json()
+    assert prof["party"] == "Alpha Party" and prof["is_winner"]
+    assert [x["name"] for x in prof["seat_field"]] == ["Asha Rao", "Ravi Rao"]   # same election only, winner first
+    assert c.get("/api/v1/candidates/999999/profile").status_code == 404
 print("ok")
 """
     script = script.replace("from fastapi.testclient import TestClient", "from fastapi.testclient import TestClient\nimport app.main as app_module")

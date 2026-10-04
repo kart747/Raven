@@ -129,3 +129,6 @@ export const useAssetGrowth = (params) =>
 
 export const useAssetGrowthElections = () =>
   useQuery({ queryKey: ['asset-growth-elections'], queryFn: () => apiGet('/api/v1/asset-growth/elections') });
+
+export const useCandidateProfile = (id) =>
+  useQuery({ queryKey: ['candidate', id], queryFn: () => apiGet(`/api/v1/candidates/${id}/profile`), enabled: id != null });

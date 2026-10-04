@@ -25,6 +25,7 @@ const SearchPalette = lazy(() => import('./components/SearchPalette'));
 const SeatMap = lazy(() => import('./components/SeatMap'));
 const PartyScoreboard = lazy(() => import('./components/PartyScoreboard'));
 const AssetGrowth = lazy(() => import('./components/AssetGrowth'));
+const CandidateProfile = lazy(() => import('./components/CandidateProfile'));
 
 // Widgets available at #embed=<id> for use in <iframe>s
 const EMBEDS = {
@@ -57,12 +58,14 @@ export default function App() {
   const ngoId = hash.ngo ? Number(hash.ngo) : null;
   const partyId = hash.party || null;
   const mpId = hash.mp ? Number(hash.mp) : null;
+  const candidateId = hash.cand ? Number(hash.cand) : null;
   const setActiveTab = (tab) => setHash({ tab: tab === 'dashboard' ? null : tab });
   const setSelectedState = (state) => setHash({ state });
   const setDonorId = (id) => setHash({ donor: id });
   const setNgoId = (id) => setHash({ ngo: id });
   const setPartyId = (id) => setHash({ party: id });
   const setMpId = (id) => setHash({ mp: id });
+  const setCandidateId = (id) => setHash({ cand: id });
 
   const [searchOpen, setSearchOpen] = useState(false);
   const embed = hash.embed;
@@ -177,7 +180,7 @@ export default function App() {
                 )}
               </div>
               <div className="lg:col-span-5">
-                <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} onOpenMp={setMpId} />
+                <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} onOpenMp={setMpId} onOpenCandidate={setCandidateId} />
               </div>
             </div>
           </div>
@@ -188,7 +191,7 @@ export default function App() {
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
         {activeTab === 'candidates' && (
           <div className="flex flex-col gap-6">
-            <CandidatesTable initialFilterState={selectedState} />
+            <CandidatesTable initialFilterState={selectedState} onOpenCandidate={setCandidateId} />
             <AssetGrowth onOpenParty={setPartyId} />
           </div>
         )}
@@ -201,8 +204,11 @@ export default function App() {
 
       <Suspense fallback={null}>
       {donorId != null && <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} onOpenParty={(id) => setHash({ donor: null, party: id })} />}
-      {partyId && <PartyProfile partyId={partyId} onClose={() => setPartyId(null)} onOpenDonor={(id) => setHash({ party: null, donor: id })} />}
+      {partyId && <PartyProfile partyId={partyId} onClose={() => setPartyId(null)} onOpenDonor={(id) => setHash({ party: null, donor: id })}
+        onOpenCandidate={(id) => setHash({ party: null, cand: id })} />}
       {ngoId != null && <NgoDetailModal ngoId={ngoId} onClose={() => setNgoId(null)} />}
+      {candidateId != null && <CandidateProfile candidateId={candidateId} onClose={() => setCandidateId(null)}
+        onOpenParty={(id) => setHash({ cand: null, party: id })} onOpenMp={(id) => setHash({ cand: null, mp: id })} onOpenCandidate={setCandidateId} />}
       {mpId != null && <MpProfile mpId={mpId} onClose={() => setMpId(null)} onOpenParty={(id) => setHash({ mp: null, party: id })} />}
       {searchOpen && (
         <SearchPalette
@@ -213,6 +219,7 @@ export default function App() {
           onOpenState={(state) => setHash({ tab: null, state })}
           onOpenMp={setMpId}
           onOpenParty={setPartyId}
+          onOpenCandidate={setCandidateId}
         />
       )}
       </Suspense>
