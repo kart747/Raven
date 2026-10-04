@@ -1,6 +1,7 @@
 import { ArrowUpRight } from 'lucide-react';
 import { useInsights } from '../../lib/queries';
-import { useT } from '../../lib/i18n';
+import { useContext } from 'react';
+import { LangContext, useT } from '../../lib/i18n';
 
 const KIND_COLOURS = {
   bonds: 'border-l-cyan-500',
@@ -12,7 +13,7 @@ const KIND_COLOURS = {
 /** Factual statements computed live from the data; each opens the record or view behind it. */
 export default function KeyFacts({ onNavigate }) {
   const t = useT();
-  const { data: facts = [], isLoading } = useInsights();
+  const { data: facts = [], isLoading } = useInsights(useContext(LangContext));
   if (isLoading || facts.length === 0) return null;
 
   const open = (link) => {

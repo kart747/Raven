@@ -62,8 +62,8 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
   of what changed between releases.
 - **Source archiving:** every source document snapshotted (Wayback Machine or our own store) so citations
   survive link rot.
-- 🟡 **Indian languages:** Hindi for the interface shell (navigation, notices, map, state panel, search; `#lang=hi`).
-  Next: Key facts, chart and table labels, then other languages. Strings live in `frontend/src/lib/i18n.js`.
+- 🟡 **Indian languages:** Hindi for the interface shell and Key facts (navigation, notices, map, state panel, search; `#lang=hi`).
+  Next: chart and table labels, then other languages. Strings live in `frontend/src/lib/i18n.js`.
 
 ## Phase 5: For journalists and researchers
 

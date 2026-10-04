@@ -790,7 +790,7 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
 
 # --- Key facts: deterministic, sourced statements for the front page ---
 @app.get("/api/v1/insights")
-def read_insights(db: Session = Depends(get_db)):
+def read_insights(lang: str = Query("en", pattern="^(en|hi)$"), db: Session = Depends(get_db)):
     """Plain factual statements computed from the data. Each carries what it links to; no generated wording."""
     D, C, P = models.Donation, models.Candidate, models.Party
     facts = []
@@ -804,6 +804,8 @@ def read_insights(db: Session = Depends(get_db)):
         .group_by(P.id, P.name).order_by(desc(func.sum(D.amount))).first()
     if total and top_party:
         facts.append({"id": "top_party", "kind": "bonds",
+                      "text_hi": f"{top_party[1]} को चुनावी बॉन्ड की कुल राशि का {pct(top_party[2], total)}% मिला "
+                                 f"(₹{total / 1e7:,.0f} करोड़ में से ₹{top_party[2] / 1e7:,.0f} करोड़)।",
                       "text": f"{top_party[1]} encashed {pct(top_party[2], total)}% of all electoral bond money "
                               f"(₹{top_party[2] / 1e7:,.0f} Cr of ₹{total / 1e7:,.0f} Cr).",
                       "link": {"party": top_party[0]}})
@@ -817,6 +819,8 @@ def read_insights(db: Session = Depends(get_db)):
             db.query(D.donor_id).filter(eb).group_by(D.donor_id).having(func.count(func.distinct(D.party_id)) >= 5).subquery()
         ).scalar()
         facts.append({"id": "spread", "kind": "bonds",
+                      "text_hi": f"{many} खरीदारों के बॉन्ड 5 या अधिक दलों ने भुनाए; सबसे अधिक दलों ({spread[2]}) को "
+                                 f"{spread[1]} के बॉन्ड मिले।",
                       "text": f"{many} purchasers' bonds were encashed by 5 or more parties; {spread[1]} "
                               f"funded the most ({spread[2]} parties).",
                       "link": {"donor": spread[0]}})
@@ -827,14 +831,19 @@ def read_insights(db: Session = Depends(get_db)):
         with_cases = mps.filter(C.criminal_cases > 0).order_by(None).count()
         crorepati = mps.filter(C.assets >= 1e7).order_by(None).count()
         facts.append({"id": "mp_cases", "kind": "candidates",
+                      "text_hi": f"2024 में चुने गए {pct(with_cases, n_mps)}% लोकसभा सांसदों ने अपने शपथपत्र में लंबित "
+                                 f"आपराधिक मामले घोषित किए ({n_mps} में से {with_cases})।",
                       "text": f"{pct(with_cases, n_mps)}% of Lok Sabha MPs elected in 2024 declared pending criminal "
                               f"cases in their affidavits ({with_cases} of {n_mps}).",
                       "link": {"tab": "candidates"}})
         facts.append({"id": "mp_crorepati", "kind": "candidates",
+                      "text_hi": f"2024 के {pct(crorepati, n_mps)}% सांसदों ने ₹1 करोड़ या उससे अधिक की संपत्ति घोषित की।",
                       "text": f"{pct(crorepati, n_mps)}% of 2024 MPs declared assets of ₹1 crore or more.",
                       "link": {"tab": "candidates"}})
         richest = mps.order_by(desc(C.assets)).first()
         facts.append({"id": "mp_richest", "kind": "candidates",
+                      "text_hi": f"2024 के सांसदों में सबसे अधिक घोषित संपत्ति: {richest.name} ({richest.constituency}, "
+                                 f"{richest.state}), ₹{richest.assets / 1e7:,.0f} करोड़।",
                       "text": f"Highest declared assets among 2024 MPs: {richest.name} ({richest.constituency}, "
                               f"{richest.state}), ₹{richest.assets / 1e7:,.0f} Cr.",
                       "link": {"url": richest.source_url}})
@@ -845,6 +854,8 @@ def read_insights(db: Session = Depends(get_db)):
         n, k = sum(r[1] for r in mla), sum(int(r[2] or 0) for r in mla)
         state, sn, sk = max((r for r in mla if r[1] >= 20), key=lambda r: (r[2] or 0) / r[1], default=mla[0])
         facts.append({"id": "mla_cases", "kind": "candidates",
+                      "text_hi": f"{pct(k, n)}% वर्तमान विधायकों ने लंबित आपराधिक मामले घोषित किए; सबसे अधिक अनुपात "
+                                 f"{state} में है ({pct(int(sk or 0), sn)}%)।",
                       "text": f"{pct(k, n)}% of sitting MLAs declared pending criminal cases; the highest share is in "
                               f"{state} ({pct(int(sk or 0), sn)}%).",
                       "link": {"state": state}})
@@ -855,6 +866,8 @@ def read_insights(db: Session = Depends(get_db)):
         .group_by(models.NGO.id, models.NGO.name).order_by(desc(func.sum(models.NGODonation.amount))).first()
     if ngo_total and top_ngo:
         facts.append({"id": "ngo_top", "kind": "ngos",
+                      "text_hi": f"एनजीओ ने वित्त वर्ष 2016-17 से 2020-21 के बीच ₹{ngo_total / 1e7:,.0f} करोड़ का विदेशी अंशदान "
+                                 f"घोषित किया; सबसे बड़ा प्राप्तकर्ता {top_ngo[1]} (₹{top_ngo[2] / 1e7:,.0f} करोड़) रहा।",
                       "text": f"NGOs declared ₹{ngo_total / 1e7:,.0f} Cr of foreign contributions in FY2016-17 to "
                               f"FY2020-21; the largest recipient was {top_ngo[1]} (₹{top_ngo[2] / 1e7:,.0f} Cr).",
                       "link": {"ngo": top_ngo[0]}})
@@ -864,9 +877,14 @@ def read_insights(db: Session = Depends(get_db)):
         .group_by(Q.ministry).order_by(desc(func.count(Q.id))).first()
     if top_min:
         facts.append({"id": "questions_ministry", "kind": "parliament",
+                      "text_hi": f"18वीं लोकसभा में अब तक सबसे अधिक प्रश्न {top_min[0]} से जुड़े रहे ({top_min[1]:,})।",
                       "text": f"The most-questioned ministry in the 18th Lok Sabha so far is {top_min[0]} "
                               f"({top_min[1]:,} questions).",
                       "link": {"tab": "legislative"}})
+    for f in facts:
+        hi = f.pop("text_hi", None)
+        if lang == "hi" and hi:
+            f["text"] = hi
     return facts
 
 
