@@ -1,24 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { AlertCircle, Award, BarChart3, Database, Globe, Landmark, Search, Sparkles, UserCheck } from 'lucide-react';
 import DashboardStats from './components/DashboardStats';
 import IndiaMap from './components/IndiaMap';
-import DonationsTable from './components/DonationsTable';
-import CandidatesTable from './components/CandidatesTable';
-import NgosTracker from './components/NgosTracker';
-import LegislativeTracker from './components/LegislativeTracker';
-import Sources from './components/Sources';
-import BriefViewer from './components/BriefViewer';
-import DonorProfile from './components/DonorProfile';
-import PartyProfile from './components/PartyProfile';
-import MpProfile from './components/MpProfile';
-import NgoDetailModal from './components/ngos/NgoDetailModal';
-import SearchPalette from './components/SearchPalette';
 import useHashParams from './lib/useHashParams';
 import PibTicker from './components/dashboard/PibTicker';
 import BondFlows from './components/dashboard/BondFlows';
 import KeyFacts from './components/dashboard/KeyFacts';
 import StateDossier from './components/dashboard/StateDossier';
 import { useCandidateStateSummary, useDashboardStats, useNgoStateTotals, useParties } from './lib/queries';
+
+// Tabs and profile windows load on demand to keep the first page light
+const DonationsTable = lazy(() => import('./components/DonationsTable'));
+const CandidatesTable = lazy(() => import('./components/CandidatesTable'));
+const NgosTracker = lazy(() => import('./components/NgosTracker'));
+const LegislativeTracker = lazy(() => import('./components/LegislativeTracker'));
+const Sources = lazy(() => import('./components/Sources'));
+const BriefViewer = lazy(() => import('./components/BriefViewer'));
+const DonorProfile = lazy(() => import('./components/DonorProfile'));
+const PartyProfile = lazy(() => import('./components/PartyProfile'));
+const MpProfile = lazy(() => import('./components/MpProfile'));
+const NgoDetailModal = lazy(() => import('./components/ngos/NgoDetailModal'));
+const SearchPalette = lazy(() => import('./components/SearchPalette'));
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -128,27 +130,33 @@ export default function App() {
           </div>
         )}
 
+        <Suspense fallback={<div className="py-16 text-center text-xs text-slate-500">Loading…</div>}>
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
         {activeTab === 'candidates' && <CandidatesTable initialFilterState={selectedState} />}
         {activeTab === 'ngos' && <NgosTracker onOpenNgo={setNgoId} />}
         {activeTab === 'legislative' && <LegislativeTracker onOpenMp={setMpId} />}
         {activeTab === 'brief' && <BriefViewer />}
         {activeTab === 'sources' && <Sources />}
+        </Suspense>
       </main>
 
-      <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} onOpenParty={(id) => setHash({ donor: null, party: id })} />
-      <PartyProfile partyId={partyId} onClose={() => setPartyId(null)} onOpenDonor={(id) => setHash({ party: null, donor: id })} />
-      <NgoDetailModal ngoId={ngoId} onClose={() => setNgoId(null)} />
-      <MpProfile mpId={mpId} onClose={() => setMpId(null)} onOpenParty={(id) => setHash({ mp: null, party: id })} />
-      <SearchPalette
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onOpenDonor={setDonorId}
-        onOpenNgo={setNgoId}
-        onOpenState={(state) => setHash({ tab: null, state })}
-        onOpenMp={setMpId}
-        onOpenParty={setPartyId}
-      />
+      <Suspense fallback={null}>
+      {donorId != null && <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} onOpenParty={(id) => setHash({ donor: null, party: id })} />}
+      {partyId && <PartyProfile partyId={partyId} onClose={() => setPartyId(null)} onOpenDonor={(id) => setHash({ party: null, donor: id })} />}
+      {ngoId != null && <NgoDetailModal ngoId={ngoId} onClose={() => setNgoId(null)} />}
+      {mpId != null && <MpProfile mpId={mpId} onClose={() => setMpId(null)} onOpenParty={(id) => setHash({ mp: null, party: id })} />}
+      {searchOpen && (
+        <SearchPalette
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          onOpenDonor={setDonorId}
+          onOpenNgo={setNgoId}
+          onOpenState={(state) => setHash({ tab: null, state })}
+          onOpenMp={setMpId}
+          onOpenParty={setPartyId}
+        />
+      )}
+      </Suspense>
 
       <footer className="bg-slate-950 border-t border-slate-900 mt-12 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4">
