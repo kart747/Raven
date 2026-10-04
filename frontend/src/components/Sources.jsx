@@ -180,9 +180,9 @@ const SOURCES = [
 // ── Integrity Guarantee Banner ────────────────────────────────────────────────
 function IntegrityBanner() {
   const guarantees = [
-    { icon: Lock,      text: 'Raw figures are never altered' },
+    { icon: Lock,      text: 'Amounts are kept exactly as disclosed' },
     { icon: FileText,  text: 'Every number cites its source document' },
-    { icon: Users,     text: 'Zero editorial inference or political opinion' },
+    { icon: Users,     text: 'Every transformation is documented' },
     { icon: Layers,    text: 'All data is publicly available OSINT' },
   ];
   return (
@@ -201,17 +201,15 @@ function IntegrityBanner() {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-black uppercase tracking-widest text-cyan-400">Data Integrity Guarantee</span>
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-900/50 border border-cyan-700/40 text-cyan-300 uppercase tracking-wider">
-              Verified
-            </span>
+            <span className="text-xs font-black uppercase tracking-widest text-cyan-400">How Raven handles data</span>
           </div>
           <p className="text-sm font-semibold text-white leading-snug">
-            Raven strictly aggregates publicly available OSINT data without editorializing or altering raw reported figures.
+            Raven compiles public records and keeps every amount exactly as the source disclosed it.
           </p>
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            All funding totals, NGO receipts, and candidate affidavit values are reproduced verbatim
-            from official government disclosures, gazette filings, and audited Election Commission records.
+            The few things Raven derives are labelled where they appear: merged spellings of purchaser names (every raw
+            spelling is kept), NGO sectors inferred from names, and exact-name links between questions and companies.
+            Gaps are shown as gaps, never filled in.
           </p>
         </div>
       </div>

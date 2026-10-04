@@ -111,6 +111,11 @@ docker compose run --rm ingest         # first data load
 UI at http://localhost:8080, API docs at http://localhost:8000/docs. Set `POSTGRES_PASSWORD` in your
 environment before exposing this anywhere.
 
+### Production
+
+A ready-to-run setup with automatic HTTPS (Caddy), Postgres, rate limiting and security headers is in
+[`docker-compose.prod.yml`](docker-compose.prod.yml). See [deploy/DEPLOY.md](deploy/DEPLOY.md).
+
 ## Configuration
 
 Set in `backend/.env` (see `.env.example`):
@@ -123,6 +128,7 @@ Set in `backend/.env` (see `.env.example`):
 | `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API. |
 | `DATABASE_URL` | Postgres URL. Empty means a local SQLite file. |
 | `ENABLE_SCHEDULED_INGEST` | `1` re-imports Lok Sabha activity weekly inside the API process. |
+| `RATE_LIMIT_PER_MINUTE` | Per-IP limit on `/api` requests (0 = off). |
 
 Frontend: `VITE_API_URL` points the UI at the API.
 

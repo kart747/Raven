@@ -4,6 +4,8 @@ import logging
 import os
 import secrets
 import threading
+import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from io import StringIO
 from typing import Iterable, List, Optional, Sequence, Tuple
@@ -11,7 +13,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import case, desc, func, or_
 from sqlalchemy.orm import Session
 
@@ -94,6 +96,28 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "0") or 0)
+_hits: dict[str, deque] = defaultdict(deque)
+_hits_lock = threading.Lock()
+
+
+@app.middleware("http")
+async def rate_limit(request, call_next):
+    """Simple per-IP limit on /api requests (off unless RATE_LIMIT_PER_MINUTE is set)."""
+    if RATE_LIMIT_PER_MINUTE and request.url.path.startswith("/api/"):
+        ip = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+        with _hits_lock:
+            window = _hits[ip]
+            while window and now - window[0] > 60:
+                window.popleft()
+            if len(window) >= RATE_LIMIT_PER_MINUTE:
+                return JSONResponse({"detail": "Too many requests; please slow down."}, status_code=429,
+                                    headers={"Retry-After": "60"})
+            window.append(now)
+    return await call_next(request)
 
 
 def require_admin(x_admin_key: Optional[str] = Header(None)):

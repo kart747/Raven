@@ -1,0 +1,70 @@
+# Production: Caddy (HTTPS) -> UI + API, Postgres. Only ports 80/443 are exposed.
+#   DOMAIN=raven.example.org POSTGRES_PASSWORD=... docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml run --rm ingest
+# See deploy/DEPLOY.md.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: raven
+      POSTGRES_USER: raven
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raven"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment: &backend_env
+      DATABASE_URL: postgresql+psycopg://raven:${POSTGRES_PASSWORD}@db:5432/raven
+      ALLOWED_ORIGINS: https://${DOMAIN:?set DOMAIN}
+      ENABLE_SCHEDULED_INGEST: "1"
+      RATE_LIMIT_PER_MINUTE: "120"
+    volumes: &backend_volumes
+      - ./data:/srv/data
+      - ./cvrajeesh_repo:/srv/cvrajeesh_repo:ro
+      - ./fcra_repo:/srv/fcra_repo:ro
+      - ./backend/data_cache:/srv/backend/data_cache
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  ingest:
+    build: ./backend
+    env_file: ./backend/.env
+    environment: *backend_env
+    volumes: *backend_volumes
+    command: ["python", "-m", "app.cli", "ingest-all"]
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

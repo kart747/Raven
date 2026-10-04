@@ -179,3 +179,22 @@ print("ok")
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr[-2000:]
+
+
+def test_rate_limit_returns_429_when_enabled(tmp_path):
+    import os
+    import subprocess
+    import sys
+    script = """
+from fastapi.testclient import TestClient
+from app.main import app
+with TestClient(app) as client:
+    codes = [client.get("/api/v1/parties").status_code for _ in range(4)]
+    assert codes == [200, 200, 200, 429], codes
+    assert client.get("/").status_code == 200  # non-API paths are not limited
+print("ok")
+"""
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'rl.db'}", "RATE_LIMIT_PER_MINUTE": "3", "GROQ_API_KEY": ""}
+    backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr[-2000:]

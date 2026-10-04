@@ -1,0 +1,13 @@
+**/node_modules
+**/venv
+**/.venv
+**/__pycache__
+**/dist
+**/*.db
+**/.env
+backend/data_cache
+data/releases
+cvrajeesh_repo
+fcra_repo
+electoral_bonds_repo
+.git
