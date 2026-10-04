@@ -183,6 +183,16 @@ Raven is growing into an open, source-linked knowledge graph of money and power 
 state assemblies, election results, electoral trusts, government contracts, regulator orders and more.
 See [ROADMAP.md](ROADMAP.md) for the plan and the datasets that need contributors.
 
+## Using the data
+
+Monthly releases (gzipped CSV per table + `manifest.json`) are on the
+[Releases](https://github.com/kart747/Raven/releases) page. [`examples/quickstart.py`](examples/quickstart.py)
+answers a few questions from a release using only the Python standard library:
+
+```bash
+python examples/quickstart.py path/to/raven-YYYY-MM-DD
+```
+
 ## Development
 
 ```bash
