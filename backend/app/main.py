@@ -1450,6 +1450,16 @@ def read_data_quality(db: Session = Depends(get_db)):
             ],
         },
         {
+            "id": "asset_comparisons", "label": "Declared-asset comparisons (re-contesting members)",
+            "rows": db.query(func.count(models.AssetComparison.id)).scalar(),
+            "last_loaded": last_loaded(models.AssetComparison),
+            "metrics": [
+                {"label": "Elections covered", "value": db.query(func.count(func.distinct(models.AssetComparison.election))).scalar()},
+                {"label": "Lok Sabha 2019 → 2024 MPs", "value": db.query(func.count(models.AssetComparison.id))
+                    .filter(models.AssetComparison.election == "Lok Sabha 2024").scalar()},
+            ],
+        },
+        {
             "id": "entity_events", "label": "Sourced purchaser events",
             "rows": events, "last_loaded": last_loaded(models.EntityEvent),
             "metrics": [{"label": "Events not matched to a purchaser", "value": events_unmatched}],
