@@ -36,8 +36,10 @@ export default function CandidatesTable({ initialFilterState }) {
     search, party_id: party, state, sort_by: sortBy,
   };
   const { data, isLoading, isError } = useCandidates({ ...filters, limit: LIMIT, offset });
-  const { house, winners_only: winnersOnly, election: electionFilter } = filters;
-  const { data: parties = [] } = useCandidateParties({ house, winners_only: winnersOnly, election: electionFilter });
+  const { house, winners_only: winnersOnly, election: electionFilter, election_prefix: electionPrefix } = filters;
+  const { data: parties = [] } = useCandidateParties({
+    house, winners_only: winnersOnly, election: electionFilter, election_prefix: electionPrefix,
+  });
   const rows = data?.data || [];
   const update = (setter) => (e) => { setter(e.target.value); setOffset(0); };
 

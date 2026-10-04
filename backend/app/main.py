@@ -273,6 +273,7 @@ def read_candidate_parties(
     house: Optional[str] = Query(None),
     election: Optional[str] = Query(None),
     winners_only: bool = Query(False),
+    election_prefix: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     """Parties that have candidates in the given view, largest first (for filters)."""
@@ -285,6 +286,8 @@ def read_candidate_parties(
         q = q.filter(C.election == election)
     if winners_only:
         q = q.filter(C.is_winner.is_(True))
+    if election_prefix:
+        q = q.filter(C.election.startswith(election_prefix))
     return [{"id": i, "name": name, "count": c}
             for i, name, c in q.group_by(models.Party.id, models.Party.name).order_by(desc(n), models.Party.name)]
 
