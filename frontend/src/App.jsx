@@ -104,7 +104,7 @@ export default function App() {
     <LangContext.Provider value={lang}>
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <header className="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-md border-b border-slate-900 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 lg:py-0 lg:h-16 flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center font-black text-black select-none">
               R
@@ -115,7 +115,8 @@ export default function App() {
             </div>
           </div>
 
-          <nav className="flex items-center gap-0.5 overflow-x-auto">
+          {/* Below lg the tabs get their own scrollable row under the logo and controls */}
+          <nav className="order-last lg:order-none w-full lg:w-auto lg:flex-1 flex items-center gap-0.5 overflow-x-auto -mx-1 px-1 pb-1 lg:pb-0">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -132,9 +133,10 @@ export default function App() {
             ))}
           </nav>
 
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
           <button onClick={() => setSearchOpen(true)} title="Search everything (press /)"
             className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-slate-700">
-            <Search className="w-3.5 h-3.5" /> {t('app.search')} <kbd className="text-[10px] text-slate-600">/</kbd>
+            <Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t('app.search')}</span> <kbd className="hidden sm:inline text-[10px] text-slate-600">/</kbd>
           </button>
           <div className="flex-shrink-0 flex rounded-lg border border-slate-800 overflow-hidden text-[11px]">
             {LANGS.map((l) => (
@@ -144,10 +146,11 @@ export default function App() {
               </button>
             ))}
           </div>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
         <div className="mb-6 border border-slate-800 bg-slate-950 rounded-xl p-3.5 flex items-start gap-3">
           <AlertCircle className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
           <div className="text-[11px] text-slate-400 leading-normal">
