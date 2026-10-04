@@ -56,8 +56,10 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 
 - ✅ **Search across datasets** (press `/`). Next: full-text ranking with Postgres FTS or Meilisearch.
 - **Public read-only API** with keys and rate limits, plus documented, versioned endpoints.
-- ✅ **Open data releases:** `export-release` writes CSV + manifest with checksums. Next: Parquet and automatic publishing.
-- **Automated refresh:** GitHub Actions rebuild sources on a schedule and open a PR with the diff.
+- ✅ **Open data releases:** `export-release` writes CSV + manifest with checksums, published monthly by the
+  `Data release` GitHub Action. Next: Parquet.
+- ✅ **Automated refresh:** the `Data release` workflow rebuilds everything from source monthly. Next: a diff report
+  of what changed between releases.
 - **Source archiving:** every source document snapshotted (Wayback Machine or our own store) so citations
   survive link rot.
 - **Indian languages:** Hindi first, then other languages, for the UI and entity names.

@@ -42,7 +42,7 @@ back to the original source on every record.
 | **Party profiles** | For each party: bonds received by year and top purchasers, MPs won in 2024, sitting MLAs by state, share of candidates declaring cases, and MP attendance. |
 | **Search everything** | Press `/` to search purchasers (including raw SBI spellings), candidates, MLAs, NGOs, MPs and questions at once. |
 | **Shareable links** | The URL records the open tab, state, purchaser or NGO, so any view can be bookmarked or sent. |
-| **Open data releases** | `python -m app.cli export-release` writes every table as gzipped CSV with a manifest of row counts, checksums and sources. |
+| **Open data releases** | Every month a GitHub Action rebuilds the database from source and publishes each table as gzipped CSV with a manifest of row counts, checksums and sources ([Releases](https://github.com/kart747/Raven/releases)). Locally: `python -m app.cli export-release`. |
 | **Data quality** | Live report of match rates, gaps and last-loaded times for every dataset. |
 
 ## Data sources

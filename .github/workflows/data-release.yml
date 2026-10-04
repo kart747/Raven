@@ -1,0 +1,80 @@
+name: Data release
+
+# Rebuilds the database from every public source and publishes it as a GitHub Release
+# (gzipped CSV per table + manifest.json with row counts, checksums and sources).
+on:
+  schedule:
+    - cron: "0 3 1 * *"   # 03:00 UTC on the 1st of each month
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Source datasets
+        working-directory: .
+        run: |
+          git clone --depth 1 https://github.com/cvrajeesh/electoral-bond-data cvrajeesh_repo
+          git clone --depth 1 https://github.com/mkonchady/fcra fcra_repo
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+
+      # MyNeta pages for past elections never change, so they are fetched once and reused
+      - name: Restore MyNeta page cache
+        uses: actions/cache@v4
+        with:
+          path: backend/data_cache
+          key: myneta-${{ github.run_id }}
+          restore-keys: myneta-
+
+      - name: Build database from sources
+        env:
+          GROQ_API_KEY: ""
+        run: python -m app.cli ingest-all
+
+      - name: Export release bundle
+        id: export
+        run: |
+          python -m app.cli export-release
+          echo "dir=$(ls -d ../data/releases/raven-* | tail -1)" >> "$GITHUB_OUTPUT"
+          echo "tag=data-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dir="${{ steps.export.outputs.dir }}"
+          dir="${dir#../}"
+          python3 - "$dir/manifest.json" > notes.md <<'PY'
+          import json, sys
+          m = json.load(open(sys.argv[1]))
+          print(f"Raven open data rebuilt from public sources on {m['created'][:10]}.\n")
+          print("| Table | Rows | Source |\n|---|---|---|")
+          for f in m["files"]:
+              print(f"| `{f['file']}` | {f['rows']:,} | {f['source']} |")
+          print("\n**Caveats**")
+          for c in m["caveats"]:
+              print(f"- {c}")
+          print(f"\n{m['data_terms']}")
+          PY
+          gh release create "${{ steps.export.outputs.tag }}" "$dir"/* \
+            --title "Raven data ${{ steps.export.outputs.tag }}" --notes-file notes.md
