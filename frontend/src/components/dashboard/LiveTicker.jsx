@@ -1,5 +1,5 @@
 import { useLive } from '../../lib/queries';
-import { timeAgo } from '../../lib/time';
+import { itemTime } from '../../lib/time';
 
 /** Scrolling strip of the latest headlines across all live sources. */
 export default function LiveTicker({ onOpenLive }) {
@@ -31,7 +31,7 @@ export default function LiveTicker({ onOpenLive }) {
               <span key={`${i.id}-${idx}`} className="inline-flex items-center gap-2">
                 <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] text-slate-400 font-bold">{i.source}</span>
                 <a href={i.url} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 font-semibold text-slate-300">{i.title}</a>
-                <span className="text-[10px] text-slate-500">{timeAgo(i.published_at)}</span>
+                <span className="text-[10px] text-slate-500" title={itemTime(i).title}>{itemTime(i).text}</span>
               </span>
             ))}
           </div>

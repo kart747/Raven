@@ -306,6 +306,7 @@ class LiveItem(Base):
     published_at = Column(DateTime, nullable=False, index=True)
     fetched_at = Column(DateTime, nullable=False)
     time_estimated = Column(Boolean, nullable=True)   # True when the feed gave no usable date (time first seen)
+    date_only = Column(Boolean, nullable=True)        # True when the feed gave a date but no time (e.g. SEBI)
     category = Column(String, nullable=False, index=True)
     language = Column(String, nullable=True)
 

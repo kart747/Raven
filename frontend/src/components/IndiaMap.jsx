@@ -3,6 +3,7 @@ import { MapContainer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useT } from '../lib/i18n';
+import { useLiveStates } from '../lib/queries';
 import EmbedButton from './ui/EmbedButton';
 
 // Fix Leaflet's default marker icon paths in webpack/vite environments
@@ -18,7 +19,7 @@ const crore = (v) => `₹${((v || 0) / 1e7).toLocaleString('en-IN', { maximumFra
 const percent = (v) => `${Math.round(v)}%`;
 
 /** Map layers. Each turns per-state data into one number, with its own formatting and hover detail. */
-function buildMetrics({ lsSummary = {}, vsSummary = {}, ngoTotals = {} }) {
+function buildMetrics({ lsSummary = {}, vsSummary = {}, ngoTotals = {}, news = {} }) {
   const share = (s) => (s && s.candidate_count ? (100 * s.candidates_with_cases) / s.candidate_count : null);
   return [
     {
@@ -39,6 +40,13 @@ function buildMetrics({ lsSummary = {}, vsSummary = {}, ngoTotals = {} }) {
     {
       id: 'ngo', label: 'NGO foreign funding', note: 'Foreign contributions declared by NGOs in the state, FY2016-17 to FY2020-21',
       value: (st) => ngoTotals[st] || null, format: crore, detail: () => 'FCRA annual returns',
+    },
+    {
+      id: 'news', label: 'In the news (24 h)',
+      note: 'Headlines naming the state in the last 24 hours, from public feeds in English and Indian languages. '
+        + 'Counts also reflect which publishers Raven follows',
+      value: (st) => news[st] || null, format: (v) => `${v} headline${v === 1 ? '' : 's'}`,
+      detail: () => 'Live feeds; exact name matches',
     },
   ];
 }
@@ -80,7 +88,8 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
       });
   }, []);
 
-  const metrics = buildMetrics({ lsSummary, vsSummary, ngoTotals });
+  const { data: liveStates } = useLiveStates(24);
+  const metrics = buildMetrics({ lsSummary, vsSummary, ngoTotals, news: liveStates?.states });
   const metric = metrics.find((m) => m.id === metricId);
   const stateNames = geoJsonData ? geoJsonData.features.map((f) => f.properties.name) : [];
 

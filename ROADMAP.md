@@ -44,9 +44,10 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 - ✅ **Seat-level map** of all 543 Lok Sabha seats joined to 2024 winners and MP profiles (`#map=seats`, embeddable).
 - ✅ **Party scoreboard** across bonds, Lok Sabha and assemblies.
 - ✅ **Declared-asset change** for re-contesting MPs and MLAs in 25 assemblies (`ingest-asset-growth`).
-- ✅ **Live headlines:** 21 public feeds plus GDELT, polled politely, streamed to the browser and tagged with MPs,
-  parties, purchasers and states; "In the news" on profiles. Next: more regional-language feeds, state government
-  press releases, Gazette of India notifications, and court cause lists.
+- ✅ **Live headlines:** 56 public feeds (English and nine Indian languages) plus GDELT, polled politely, streamed to
+  the browser and tagged with MPs, parties, purchasers and states in English and Indian scripts; "In the news" on
+  profiles and states; a news layer on the map; SEBI enforcement orders linked to bond purchasers. Next: Odia,
+  Assamese and Urdu feeds, state government press releases, Gazette of India notifications, court cause lists.
 - ⏸ **Assembly seat map:** DataMeet's assembly boundaries are pre-delimitation for several states and have known shifts and
   name errors, so they are not used until a better source exists.
 
@@ -79,7 +80,8 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 
 ## Phase 5: For journalists and researchers
 
-- **Alerts:** follow a company, party or MP and get notified when new records appear.
+- 🟡 **Alerts:** every live view is an RSS feed, so a company, party, MP or state can be followed in any feed reader.
+  Next: feeds for new records (bonds, affidavits, questions), not only headlines.
 - ✅ **Shareable views:** the URL records tab, state, purchaser, party, MP or NGO.
 - ✅ **Embeddable charts:** `#embed=flows|facts|map` with an Embed button that copies an `<iframe>` snippet.
 - **Notebooks:** Jupyter examples showing how to answer real questions with the open data.

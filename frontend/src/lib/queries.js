@@ -139,5 +139,8 @@ export const useLive = (params) =>
 export const useLiveTrending = (hours = 24) =>
   useQuery({ queryKey: ['live-trending', hours], queryFn: () => apiGet('/api/v1/live/trending', { hours }), refetchInterval: 2 * 60 * 1000 });
 
+export const useLiveStates = (hours = 24) =>
+  useQuery({ queryKey: ['live-states', hours], queryFn: () => apiGet('/api/v1/live/states', { hours }), refetchInterval: 5 * 60 * 1000 });
+
 export const useLiveSources = () =>
   useQuery({ queryKey: ['live-sources'], queryFn: () => apiGet('/api/v1/live/sources'), refetchInterval: 2 * 60 * 1000 });

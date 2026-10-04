@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from sqlalchemy import and_, case, desc, func, or_
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,7 @@ from .brief_worker import generate_and_save_weekly_brief
 from .database import ensure_schema, get_db, SessionLocal
 from .pib_ingest import PIB_FEEDS, get_cached_pib_releases
 from .import_member_terms import career as member_career
+from .live.sources import BY_KEY as LIVE_SOURCE_KEYS
 from .seats import alias as seat_alias
 from .seed import seed_db
 
@@ -1284,15 +1285,17 @@ def _live_dicts(db, items):
         "id": i.id, "title": i.title, "url": i.url, "source_key": i.source_key, "source": names.get(i.source_key, i.source_key),
         "category": i.category, "language": i.language,
         "published_at": i.published_at.isoformat() + "Z", "time_estimated": bool(i.time_estimated),
-        "mentions": mentions.get(i.id, []),
+        "date_only": bool(i.date_only), "mentions": mentions.get(i.id, []),
     } for i in items]
 
 
-def _live_query(db, category=None, source=None, kind=None, ref=None, q=None):
+def _live_query(db, category=None, source=None, kind=None, ref=None, q=None, language=None):
     L = models.LiveItem
     query = db.query(L)
     if category:
         query = query.filter(L.category == category)
+    if language:
+        query = query.filter(L.language == language)
     if source:
         query = query.filter(L.source_key == source)
     if q:
@@ -1308,13 +1311,13 @@ def _live_query(db, category=None, source=None, kind=None, ref=None, q=None):
 def read_live(
     category: Optional[str] = Query(None), source: Optional[str] = Query(None),
     kind: Optional[str] = Query(None, pattern="^(mp|party|purchaser|state)$"), ref: Optional[str] = Query(None),
-    q: Optional[str] = Query(None, max_length=100),
+    q: Optional[str] = Query(None, max_length=100), language: Optional[str] = Query(None, max_length=5),
     before_id: Optional[int] = Query(None), limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
     """Latest headlines from live sources (title, link, time only), with the Raven entities they name."""
     L = models.LiveItem
-    query = _live_query(db, category, source, kind, ref, q)
+    query = _live_query(db, category, source, kind, ref, q, language)
     if before_id:   # page on from that item, in the same (time, id) order as the list
         cursor = db.get(L, before_id)
         if cursor is not None:
@@ -1323,6 +1326,58 @@ def read_live(
     items = query.order_by(desc(L.published_at), desc(L.id)).limit(limit).all()
     # The stream continues from the newest item collected, which need not be the newest by publication time
     return {"data": _live_dicts(db, items), "latest_id": db.query(func.max(L.id)).scalar() or 0}
+
+
+@app.get("/api/v1/live/rss")
+def read_live_rss(
+    request: Request,
+    category: Optional[str] = Query(None), source: Optional[str] = Query(None),
+    kind: Optional[str] = Query(None, pattern="^(mp|party|purchaser|state)$"), ref: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, max_length=100), language: Optional[str] = Query(None, max_length=5),
+    db: Session = Depends(get_db),
+):
+    """The same headlines as /live, as an RSS feed: follow an MP, party, purchaser, state or topic in any feed reader."""
+    from email.utils import format_datetime
+    from xml.sax.saxutils import escape, quoteattr
+    L = models.LiveItem
+    items = _live_query(db, category, source, kind, ref, q, language).order_by(desc(L.published_at), desc(L.id)).limit(50).all()
+    names = dict(db.query(models.LiveSource.key, models.LiveSource.name))
+    homepages = dict(db.query(models.LiveSource.key, models.LiveSource.homepage))
+    about = []
+    if kind and ref:
+        label = db.query(models.LiveMention.label).filter(models.LiveMention.kind == kind, models.LiveMention.ref == ref).limit(1).scalar()
+        about.append(f"naming {label or ref}")
+    if category:
+        about.append(f"in {category}")
+    if language:
+        about.append(f"in {language}")
+    if q:
+        about.append(f'matching "{q}"')
+    title = "Raven live headlines" + (" " + ", ".join(about) if about else "")
+    rfc822 = lambda d: format_datetime(d.replace(tzinfo=datetime.timezone.utc))  # noqa: E731
+    entries = "".join(
+        "<item>"
+        f"<title>{escape(i.title)}</title><link>{escape(i.url)}</link><guid isPermaLink=\"true\">{escape(i.url)}</guid>"
+        f"<pubDate>{rfc822(i.published_at)}</pubDate><category>{escape(i.category)}</category>"
+        f"<source url={quoteattr(homepages.get(i.source_key) or '')}>{escape(names.get(i.source_key, i.source_key))}</source>"
+        "</item>" for i in items)
+    xml = ('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>'
+           f"<title>{escape(title)}</title><link>https://github.com/kart747/Raven</link>"
+           f"<description>{escape(title)}. Headlines link to the publishers; tags are exact name matches.</description>"
+           f"<lastBuildDate>{rfc822(datetime.datetime.utcnow())}</lastBuildDate><ttl>10</ttl>"
+           f"{entries}</channel></rss>")
+    return Response(xml, media_type="application/rss+xml; charset=utf-8")
+
+
+@app.get("/api/v1/live/states")
+def read_live_states(hours: int = Query(24, ge=1, le=24 * 14), db: Session = Depends(get_db)):
+    """Headlines naming each state over the last N hours (for the map)."""
+    since = datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
+    M, L = models.LiveMention, models.LiveItem
+    rows = db.query(M.ref, func.count(func.distinct(M.item_id))).join(L, L.id == M.item_id)\
+        .filter(M.kind == "state", L.published_at >= since).group_by(M.ref).all()
+    return {"hours": hours, "states": {ref: n for ref, n in rows},
+            "note": "Headlines that name the state exactly, in English or an Indian language. Coverage varies by state."}
 
 
 @app.get("/api/v1/live/sources")
@@ -1337,7 +1392,7 @@ def read_live_sources(db: Session = Depends(get_db)):
         "key": s.key, "name": s.name, "category": s.category, "homepage": s.homepage, "language": s.language,
         "last_fetch_at": fmt(s.last_fetch_at), "last_ok_at": fmt(s.last_ok_at), "last_status": s.last_status,
         "failures": s.consecutive_failures, "items_total": s.items_total, "items_24h": recent.get(s.key, 0),
-    } for s in db.query(S).order_by(S.category, S.name)]
+    } for s in db.query(S).order_by(S.category, S.name) if s.key in LIVE_SOURCE_KEYS]
 
 
 @app.get("/api/v1/live/trending")

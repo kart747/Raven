@@ -42,21 +42,24 @@ const SOURCES = [
     iconBg: 'from-cyan-500/20 to-cyan-500/5',
     borderAccent: 'border-l-cyan-500',
     pill: { label: 'Live Feed', color: 'bg-cyan-950/60 border-cyan-800/40 text-cyan-400' },
-    name: 'Live headlines: PIB, RBI, news publishers, GDELT',
-    subtitle: '21 public RSS feeds and the GDELT DOC 2.0 API',
+    name: 'Live headlines: PIB, RBI, SEBI, news publishers, GDELT',
+    subtitle: '55 public RSS feeds in English and nine Indian languages, and the GDELT DOC 2.0 API',
     url: 'https://pib.gov.in',
     license: 'Headline, link and time only; full stories stay on the publisher\'s site',
     licenseUrl: 'https://www.gdeltproject.org/about.html#termsofuse',
     refresh: 'Each source on its own interval (10–15 min), checked every 2 min',
-    dataType: 'Government press releases, RBI notices, political, national, court and fact-check headlines, Hindi news',
+    dataType: 'Government press releases, RBI notices, SEBI orders; political, national, state, court and fact-check headlines; Indian-language news',
     description:
-      'Headlines are collected from each publisher\'s own RSS feed (Press Information Bureau, RBI, national and Hindi ' +
-      'newspapers, legal news, fact-checkers) and from GDELT for global coverage of India. robots.txt is honoured, ' +
+      'Headlines are collected from each publisher\'s own RSS feed (Press Information Bureau, RBI, SEBI, national and state ' +
+      'newspapers, papers in Hindi, Marathi, Gujarati, Punjabi, Bengali, Tamil, Telugu, Kannada and Malayalam, legal news, ' +
+      'fact-checkers) and from GDELT for global coverage of India. robots.txt is honoured, ' +
       'requests are conditional (ETag / Last-Modified) and failing sources back off. Headlines are tagged when they ' +
       'name an MP, party, bond purchaser or state exactly, and are kept for 60 days.',
     stats: null,
-    limitation: 'PIB\'s feed gives no publication time, so PIB items show when Raven first saw them ("seen …"). ' +
-      'Tags are exact name matches in the headline and can include different people who share a name.',
+    limitation: 'PIB\'s feed gives no publication time, so PIB items show when Raven first saw them ("seen …"); SEBI\'s ' +
+      'gives dates only. Tags are exact name matches in the headline and can include different people who share a name; ' +
+      'Indian-language tags cover parties, states and well-known MPs. SEBI recovery orders and RTI appeals are left out ' +
+      'and PAN numbers are removed.',
     datasetUrl: null,
   },
   {

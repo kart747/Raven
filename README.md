@@ -31,7 +31,8 @@ back to the original source on every record.
 
 | Area | What you get |
 |---|---|
-| **Live** | Headlines from 21 public feeds (PIB, RBI, national, political, court and fact-check desks, Hindi news, GDELT), streamed to the browser as they arrive and tagged with the MPs, parties, bond purchasers and states they name. Profiles show "In the news"; a trending panel shows who is named most in the last 24 hours. |
+| **Live** | Headlines from 56 public feeds: PIB, RBI and SEBI; national, political, state, court and fact-check desks; papers in nine Indian languages (Hindi, Marathi, Gujarati, Punjabi, Bengali, Tamil, Telugu, Kannada, Malayalam); and GDELT. Streamed to the browser as they arrive and tagged with the MPs, parties, bond purchasers and states they name, in English and in Indian scripts. Profiles and state panels show "In the news"; the map has a news layer; a trending panel shows who is named most in the last 24 hours. |
+| **Follow by RSS** | Any live view (an MP, party, purchaser, state, category, language or search) is also an RSS feed (`/api/v1/live/rss?kind=mp&ref=…`), so you can follow it in any feed reader without an account. |
 | **Key facts** | Plain statements computed live from the data (e.g. share of MPs declaring cases, largest bond recipient), each linking to the records behind it. No AI wording. |
 | **Electoral bonds** | All 20,384 encashed bonds (Apr 2019 – Feb 2024), joined to purchasers on the unique bond number. Search, filter by party, year or purchaser, export CSV. |
 | **Purchaser profiles** | Each company's total, the parties it funded, monthly encashments, and every spelling SBI printed for the name. Optional sourced events (court orders, raids, contract awards) can be shown on the same timeline. |
@@ -41,7 +42,7 @@ back to the original source on every record.
 | **Parliament activity** | Attendance, debates, questions and private member bills for the 18th Lok Sabha, plus per-state views. |
 | **Lok Sabha questions** | Every question asked since 2009 (15th–18th Lok Sabha), searchable by words, ministry and member, each linked to the official answer PDF. Purchaser profiles list questions whose titles name the company. |
 | **Seat map** | All 543 Lok Sabha seats coloured by winning party, winner's declared cases, assets, or number of candidates; click a seat for its MP. Official state outlines on top. |
-| **State map** | Four layers (candidate assets, candidates declaring cases, MLAs declaring cases, NGO foreign funding). Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
+| **State map** | Five layers (candidate assets, candidates declaring cases, MLAs declaring cases, NGO foreign funding, headlines in the last 24 hours). Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
 | **Candidate & MLA profiles** | Every candidate and sitting MLA: affidavit, change since their previous affidavit, everyone else who stood in the seat, and a link to the Parliament record for MPs. |
 | **MP profiles** | Each Lok Sabha MP's 2024 affidavit next to their parliamentary record across terms (15th-18th Lok Sabha, linked only when seat, state and name all match): attendance, debates, questions by ministry, bills. |
@@ -60,7 +61,7 @@ back to the original source on every record.
 | FCRA foreign contributions | MHA annual returns ([mkonchady/fcra](https://github.com/mkonchady/fcra)) | Local clone |
 | Candidate affidavits (Lok Sabha 2024 and all 31 state/UT assemblies) | [MyNeta](https://myneta.info/) (ADR) | Scraped, rate-limited, cached |
 | MP activity, bills & questions (ODbL-1.0) | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity), from sansad.in | Downloaded on import |
-| Live headlines | Publishers' own RSS feeds (PIB, RBI, The Hindu, Indian Express, ThePrint, Mint, ET, NDTV, TOI, HT, News18, Scroll, The News Minute, Bar & Bench, Supreme Court Observer, Alt News, BBC Hindi, NDTV Khabar) and the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/); list in [`backend/app/live/sources.py`](backend/app/live/sources.py) | Polled (robots.txt honoured, conditional requests, back-off). Only headline, link and time are stored; kept 60 days |
+| Live headlines | 55 publishers' own RSS feeds (PIB, RBI, SEBI, national and state papers, Bar & Bench, fact-checkers, BBC Indian-language services, Amar Ujala, Sakal, Dinamani, Sakshi, Prajavani, Mathrubhumi and more) and the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/); full list in [`backend/app/live/sources.py`](backend/app/live/sources.py) | Polled (robots.txt honoured, conditional requests, one request at a time per publisher, back-off). Only headline, link and time are stored; kept 60 days |
 | Lok Sabha seat boundaries | [DataMeet `india_pc_2019_simplified`](https://github.com/datameet/maps/tree/master/parliamentary-constituencies) (CC0), 2008 delimitation; Assam and J&K seats were redrawn later and are flagged | Bundled (`frontend/public/india-pc.geojson`, rebuilt with `python -m app.cli build-seat-map`) |
 | State boundaries (map) | [DataMeet `States/Admin2`](https://github.com/datameet/maps/tree/master/States) (MIT), updated to the Survey of India map incl. Ladakh and J&K | Bundled (`frontend/public/india.geojson`) |
 | Optional: FCRA status, purchaser industry and events | Your own sourced CSVs, see [data/README.md](data/README.md) | `data/*.csv` |
@@ -195,7 +196,8 @@ docker-compose.yml  Postgres + API + web
 - Question-to-company links are exact matches of a company's distinctive name in the question *title* only. Single-word names, generic names and individuals are never matched, so some real mentions are missed by design.
 - Lok Sabha by-elections (e.g. Wayanad and Nanded, Nov 2024) are kept as separate elections; Lok Sabha 2024 statistics use the 543 general-election seats.
 - Lok Sabha 2024 includes every candidate MyNeta analysed. About 580 of them don't appear on MyNeta's constituency lists and MyNeta gives no reason; they are included (as in ADR's published totals) and never marked as winners.
-- Live headlines are not checked for accuracy; they are what each publisher published. PIB's feed has no times, so PIB items show when Raven first saw them. Tags are exact name matches in the headline only.
+- Live headlines are not checked for accuracy; they are what each publisher published. PIB's feed has no times, so PIB items show when Raven first saw them; SEBI's gives dates only, which are shown as dates. Tags are exact name matches in the headline only; Indian-language tags come from a curated list (`app/live/aliases.py`), so they cover parties, states and well-known MPs, not every MP. The map's news layer reflects which publishers Raven follows as well as events.
+- SEBI debt-recovery orders and RTI appeals are left out of the live feed (they concern private individuals), and PAN numbers are removed from every headline.
 - MyNeta's paginated lists skip rows, so Lok Sabha candidates are read constituency by constituency and MLAs are checked against MyNeta's published totals; each import reports any shortfall.
 
 ## Roadmap

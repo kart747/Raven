@@ -173,7 +173,8 @@ paths = ["/api/v1/parties", "/api/v1/parties/scoreboard", "/api/v1/donations", "
          "/api/v1/ngos/stats", "/api/v1/ngos/state-totals", "/api/v1/mp-activity/stats", "/api/v1/questions",
          "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows", "/api/v1/seats/lok-sabha-2024", "/api/v1/asset-growth",
          "/api/v1/search?q=ab", "/api/v1/insights", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources",
-         "/api/v1/live", "/api/v1/live/sources", "/api/v1/live/trending"]
+         "/api/v1/live", "/api/v1/live/sources", "/api/v1/live/trending", "/api/v1/live/states",
+         "/api/v1/live/rss", "/api/v1/live/rss?kind=party&ref=BJP"]
 with TestClient(app) as client:
     bad = [(p, client.get(p).status_code) for p in paths]
     bad = [b for b in bad if b[1] != 200]
@@ -289,6 +290,8 @@ with TestClient(app_module.app) as c:
     assert [i["id"] for i in live["data"]] == [2, 1, 3] and live["latest_id"] == 3   # time order; stream resumes after 3
     assert [i["id"] for i in c.get("/api/v1/live?before_id=1").json()["data"]] == [3]  # paging follows the same order
     assert [i["id"] for i in c.get("/api/v1/live?kind=party&ref=AAA").json()["data"]] == [2, 1]
+    rss = c.get("/api/v1/live/rss?kind=party&ref=AAA").text
+    assert rss.count("<item>") == 2 and "naming Alpha Party" in rss and "https://x.in/2" in rss
     trend = c.get("/api/v1/live/trending").json()
     assert trend["trending"]["party"] == [{"ref": "AAA", "label": "Alpha Party", "headlines": 2}], trend
 print("ok")
@@ -369,3 +372,58 @@ def test_live_dates_without_timezone_are_read_as_ist():
       <pubDate>Fri, 02 Oct 2026 11:15:00</pubDate></item></channel></rss>"""
     [item] = parse_rss(rss)
     assert (item["published_at"].hour, item["published_at"].minute) == (5, 45)     # 11:15 IST = 05:45 UTC
+
+
+def test_live_tagger_reads_indian_languages_conservatively():
+    from app.live.tagger import Tagger
+    t = Tagger(parties=["BJP", "INC", "AITC", "KC", "CPI(M)", "CPI", "DMK", "AIADMK"],
+               mps=[(1, "Narendra Modi"), (2, "Rahul Gandhi"), (3, "Rahul Kaswan")], donors=[(9, "ACME INDUSTRIES LIMITED")],
+               states=["Gujarat", "Maharashtra", "Assam", "Tamil Nadu", "Kerala", "West Bengal", "Chhattisgarh"])
+    tags = lambda s: {(k, r) for k, r, _ in t.tag(s)}  # noqa: E731
+    # English is unchanged
+    assert tags("Rahul Gandhi meets Acme Industries; BJP responds") == {("mp", "2"), ("purchaser", "9"), ("party", "BJP")}
+    assert tags("Nationalist Congress Party leader quits") == set()           # not the INC
+    assert tags("Kerala Congress (M) leader") == {("party", "KC")}
+    # Hindi: chandrabindu and nukta spellings compare equal
+    assert tags("राहुल गाँधी ने भाजपा पर हमला बोला") == {("mp", "2"), ("party", "BJP")}
+    assert tags("छत्तीसगढ़ में") == tags("छत्तीसगढ़ में") \
+        == {("state", "Chhattisgarh")}
+    # Marathi attaches case endings to the name
+    assert tags("महाराष्ट्रात भाजपने काँग्रेसच्या नेत्यांना घेरले") == {("state", "Maharashtra"), ("party", "BJP"), ("party", "INC")}
+    assert tags("गुजराती चित्रपट") == tags("ગુજરાતીઓની હોટેલ") == set()        # "Gujarati(s)" is not the state
+    assert tags("असमान वितरण") == set() and tags("असम में बाढ़") == {("state", "Assam")}   # असमान = unequal
+    assert tags("तृणमूल कांग्रेसने आरोप केला") == {("party", "AITC")}          # not also INC
+    # Tamil: stems without the final pulli; dotted abbreviations
+    assert tags("பாஜகவின் தமிழ்நாடு தலைவர்; காங்கிரஸின் பதில்") == {("party", "BJP"), ("state", "Tamil Nadu"), ("party", "INC")}
+    assert tags("அ.தி.மு.க. கூட்டணி") == {("party", "AIADMK")}                 # not also DMK
+    # Malayalam: atomic chillu and the older consonant + virama + ZWJ spelling
+    assert tags("കോൺഗ്രസിന്റെ നിലപാട്") == tags("കോണ്‍ഗ്രസിന്റെ നിലപാട്") == {("party", "INC")}
+    assert tags("സിപിഐ എം സമ്മേളനം") == {("party", "CPI(M)")} and tags("സിപിഐ നേതാവ്") == {("party", "CPI")}
+    # Bengali
+    assert tags("পশ্চিমবঙ্গের বিজেপির নেতা") == {("state", "West Bengal"), ("party", "BJP")}
+
+
+def test_live_date_only_items_show_their_date():
+    import datetime as dt
+    from app.live.poller import _published, parse_rss
+    rss = b"""<rss><channel><item><title>SEBI order</title><link>https://www.sebi.gov.in/x.html</link>
+      <pubDate>01 Oct, 2026 +0530</pubDate></item></channel></rss>"""
+    [item] = parse_rss(rss)
+    assert item["date_only"] and item["published_at"] == dt.datetime(2026, 9, 30, 18, 30)   # midnight IST
+    same_day = dt.datetime(2026, 10, 1, 9, 0)
+    assert _published(item, same_day) == (same_day, False)                   # sorted at the time first seen
+    later = dt.datetime(2026, 10, 4, 9, 0)
+    assert _published(item, later) == (dt.datetime(2026, 10, 1, 18, 29, 59), False)   # end of its date
+
+
+def test_live_titles_never_keep_pan_numbers_or_private_recovery_orders():
+    import re
+    from app.live.poller import clean_title
+    from app.live.sources import BY_KEY
+    assert clean_title("Release Order against A B Shah (PAN: CACPS1824G) in the matter of X") == \
+        "Release Order against A B Shah in the matter of X"
+    skip = re.compile(BY_KEY["sebi"].skip_titles, re.I)
+    assert skip.search("Appeal No. 7073 of 2026 filed by Ramesh B")
+    assert skip.search("Remittance Order dated October 01, 2026 issued under RC No. 9267 of 2026")
+    assert not skip.search("Adjudication Order in the matter of SMC Global Securities Ltd")
+    assert not skip.search("Corrigendum to the final order in the matter of Adani Group Companies")

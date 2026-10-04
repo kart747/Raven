@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useCandidateStateSummary } from '../../lib/queries';
 import { useT } from '../../lib/i18n';
 import { CandidatesPanel, LegislativePanel, NgoPanel } from './DossierPanels';
+import InTheNews from '../live/InTheNews';
 
 const TABS = [
   { id: 'candidates', label: 'state.tab.ls', source: 'Source: MyNeta / ADR (Lok Sabha 2024 affidavits)' },
   { id: 'mlas', label: 'state.tab.mla', source: 'Source: MyNeta / ADR (latest assembly election affidavits)' },
   { id: 'ngos', label: 'state.tab.ngo', source: 'Source: FCRA annual returns (MHA)' },
   { id: 'legislative', label: 'state.tab.parl', source: 'Source: Lok Sabha activity (Vonter dataset)' },
+  { id: 'news', label: 'state.tab.news', source: 'Source: live headlines from public feeds that name the state' },
 ];
 
 export default function StateDossier({ state, candidateSummary, onOpenMp, onOpenCandidate }) {
@@ -37,7 +39,8 @@ export default function StateDossier({ state, candidateSummary, onOpenMp, onOpen
         tab === 'candidates' ? <CandidatesPanel state={state} summary={candidateSummary} onOpenCandidate={onOpenCandidate} />
           : tab === 'mlas' ? <CandidatesPanel state={state} summary={mlaSummary[state]} house="Vidhan Sabha" noun="Sitting MLAs" onOpenCandidate={onOpenCandidate} />
           : tab === 'ngos' ? <NgoPanel state={state} />
-            : <LegislativePanel state={state} onOpenMp={onOpenMp} />
+            : tab === 'news' ? <InTheNews kind="state" refId={state} title="Latest headlines" />
+              : <LegislativePanel state={state} onOpenMp={onOpenMp} />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-800 rounded-2xl bg-slate-950/30 px-6 py-10">
           <h3 className="text-sm font-bold text-slate-200">{t('state.empty.title')}</h3>

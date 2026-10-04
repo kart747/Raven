@@ -50,8 +50,12 @@ Live sources are listed in `backend/app/live/sources.py`. To add one:
    `min_interval_minutes` of 10 or more.
 4. Run `python -m app.cli live-poll --only <key>` and check the headlines, times and links look right. If the
    feed has no dates, items are shown as "seen" at the time Raven first saw them; say so in the PR.
-5. If the source names people, parties or companies in a way the tagger misses (abbreviations, nicknames),
-   add an alias in `backend/app/live/tagger.py`, then run `python -m app.cli live-retag`.
+5. If the source names people, parties or states in a way the tagger misses (abbreviations, nicknames, another
+   script), add an alias in `backend/app/live/aliases.py`, then run `python -m app.cli live-retag`. A phrase ending
+   in `*` may take a case ending in the same word (भाजपने, பாஜகவின்); use it only for names of four or more
+   characters that aren't the start of ordinary words, and add a test with real headlines.
+6. If a feed mixes in items about private individuals (as SEBI's recovery orders do), leave them out with
+   `skip_titles`.
 
 Only the headline, link and time are stored. Don't add fields that copy article text.
 
