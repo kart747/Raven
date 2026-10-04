@@ -1,0 +1,35 @@
+name: New dataset
+description: Propose a public dataset for Raven
+labels: ["dataset"]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Source URL
+    validations:
+      required: true
+  - type: input
+    id: licence
+    attributes:
+      label: Licence or terms of use
+      description: Link to the licence, terms, or robots.txt
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What it contains and why it matters
+    validations:
+      required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: How it links to existing data
+      description: e.g. company names match bond purchasers, constituencies match candidates
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Principles
+      options:
+        - label: Public records about institutions or people in their public role only (see ROADMAP.md)
+          required: true

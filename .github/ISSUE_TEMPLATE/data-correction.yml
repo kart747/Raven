@@ -1,0 +1,27 @@
+name: Data correction
+description: A figure, name or link in Raven is wrong
+labels: ["data-correction"]
+body:
+  - type: markdown
+    attributes:
+      value: Raven names real people and organisations, so corrections are handled first. Please link the official source.
+  - type: input
+    id: where
+    attributes:
+      label: Where is the error?
+      description: Page URL or record (e.g. candidate name, constituency, election)
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What does Raven show, and what is correct?
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Official source for the correct value
+      description: ECI, MyNeta/ADR affidavit, MHA, Lok Sabha, court or regulator document
+    validations:
+      required: true
