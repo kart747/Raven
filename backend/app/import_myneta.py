@@ -429,7 +429,20 @@ def run_assembly_import(only_states: list[str] | None = None) -> dict:
         if rows:
             _replace_election(election, "Vidhan Sabha", year, rows)
         report[election] = {"imported": len(rows), "published": expected}
+
+    removed = 0
+    if not only_states:
+        # A state's previous assembly is no longer "sitting": drop elections superseded by a newer one
+        db = SessionLocal()
+        try:
+            removed = db.query(models.Candidate).filter(
+                models.Candidate.house == "Vidhan Sabha", models.Candidate.election.notin_(list(report))
+            ).delete(synchronize_session=False)
+            db.commit()
+        finally:
+            db.close()
     return {
+        "superseded_rows_removed": removed,
         "assemblies": len(report),
         "mlas_imported": sum(r["imported"] for r in report.values()),
         "mlas_published": sum(r["published"] or 0 for r in report.values()),
