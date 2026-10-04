@@ -52,6 +52,13 @@ PARTY_ALIASES = {
     "Maharashtrawadi Gomantak Party": "MGP",
     "All India Majlis-E-Ittehadul Muslimeen": "AIMIM",
     "Revolutionary Socialist Party": "RSP",
+    # Post-split factions: one ID each, however MyNeta spells them in a given election
+    "Shiv Sena (Uddhav Balasaheb Thackeray)": "SS(UBT)",
+    "ShivSena (Uddhav Balasaheb Thackeray)": "SS(UBT)",
+    "Shiv Sena (Uddhav Balasaheb Thackrey)": "SS(UBT)",
+    "NCP-Sharadchandra Pawar": "NCP(SP)",
+    "Nationalist Congress Party – Sharadchandra Pawar": "NCP(SP)",
+    "Nationalist Congress Party - Sharadchandra Pawar": "NCP(SP)",
 }
 
 _session = requests.Session()

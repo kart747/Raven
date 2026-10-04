@@ -42,6 +42,9 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 ## Done since the first roadmap
 
 - ✅ **Seat-level map** of all 543 Lok Sabha seats joined to 2024 winners and MP profiles (`#map=seats`, embeddable).
+- ✅ **Party scoreboard** across bonds, Lok Sabha and assemblies.
+- ⏸ **Assembly seat map:** DataMeet's assembly boundaries are pre-delimitation for several states and have known shifts and
+  name errors, so they are not used until a better source exists.
 
 ## Phase 2: Entity graph
 

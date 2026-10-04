@@ -957,6 +957,43 @@ def read_bond_flows(top: int = Query(15, ge=5, le=40), db: Session = Depends(get
             "share_of_all_bonds": round(100 * total / all_total, 1) if all_total else 0}
 
 
+# --- Party scoreboard: one row per party across datasets ---
+@app.get("/api/v1/parties/scoreboard")
+def read_party_scoreboard(min_seats: int = Query(1, ge=0), db: Session = Depends(get_db)):
+    """Bonds received, 2024 MPs, sitting MLAs and declared-case shares per party."""
+    D, C = models.Donation, models.Candidate
+    cases = func.sum(case((C.criminal_cases > 0, 1), else_=0))
+    bonds = {pid: (float(a), n) for pid, a, n in db.query(D.party_id, func.sum(D.amount), func.count(D.id))
+             .filter(D.funding_type == "Electoral Bond").group_by(D.party_id)}
+    ls = {pid: (n, int(k or 0), int(w or 0), float(av or 0)) for pid, n, k, w, av in db.query(
+        C.party_id, func.count(C.id), cases, func.sum(case((C.is_winner.is_(True), 1), else_=0)),
+        func.avg(case((C.is_winner.is_(True), C.assets), else_=None)),
+    ).filter(C.election == "Lok Sabha 2024").group_by(C.party_id)}
+    mla = {pid: (n, int(k or 0)) for pid, n, k in db.query(C.party_id, func.count(C.id), cases)
+           .filter(C.house == "Vidhan Sabha").group_by(C.party_id)}
+    names = dict(db.query(models.Party.id, models.Party.name))
+
+    def pct(a, b):
+        return round(100 * a / b, 1) if b else None
+
+    rows = []
+    for pid in set(bonds) | set(ls) | set(mla):
+        b_amt, b_n = bonds.get(pid, (0.0, 0))
+        ls_n, ls_k, mps, mp_assets = ls.get(pid, (0, 0, 0, 0.0))
+        mla_n, mla_k = mla.get(pid, (0, 0))
+        if mps + mla_n < min_seats and not b_amt:
+            continue
+        rows.append({
+            "party_id": pid, "party": names.get(pid, pid),
+            "bonds_amount": b_amt, "bonds_count": b_n,
+            "ls_candidates": ls_n, "ls_candidates_with_cases_pct": pct(ls_k, ls_n),
+            "mps_2024": mps, "avg_mp_assets": mp_assets or None,
+            "mlas": mla_n, "mlas_with_cases_pct": pct(mla_k, mla_n),
+        })
+    rows.sort(key=lambda r: (r["mps_2024"] + r["mlas"], r["bonds_amount"]), reverse=True)
+    return rows
+
+
 # --- Party profile: money in, representatives, affidavits, parliament ---
 @app.get("/api/v1/parties/{party_id}/profile")
 def read_party_profile(party_id: str, db: Session = Depends(get_db)):

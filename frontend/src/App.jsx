@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { AlertCircle, Award, BarChart3, Database, Globe, Landmark, Search, Sparkles, UserCheck } from 'lucide-react';
+import { AlertCircle, Award, BarChart3, Database, Flag, Globe, Landmark, Search, Sparkles, UserCheck } from 'lucide-react';
 import DashboardStats from './components/DashboardStats';
 import IndiaMap from './components/IndiaMap';
 import useHashParams from './lib/useHashParams';
@@ -23,6 +23,7 @@ const MpProfile = lazy(() => import('./components/MpProfile'));
 const NgoDetailModal = lazy(() => import('./components/ngos/NgoDetailModal'));
 const SearchPalette = lazy(() => import('./components/SearchPalette'));
 const SeatMap = lazy(() => import('./components/SeatMap'));
+const PartyScoreboard = lazy(() => import('./components/PartyScoreboard'));
 
 // Widgets available at #embed=<id> for use in <iframe>s
 const EMBEDS = {
@@ -35,12 +36,13 @@ const EMBEDS = {
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+  { id: 'parties', label: 'Parties', icon: Flag },
   { id: 'donations', label: 'Electoral Bonds', icon: Landmark },
-  { id: 'candidates', label: 'Candidate Affidavits', icon: Award },
+  { id: 'candidates', label: 'Candidates', icon: Award },
   { id: 'ngos', label: 'NGO Funding', icon: Globe },
-  { id: 'legislative', label: 'Parliament Activity', icon: UserCheck },
+  { id: 'legislative', label: 'Parliament', icon: UserCheck },
   { id: 'brief', label: 'AI Brief', icon: Sparkles },
-  { id: 'sources', label: 'Sources & Data Quality', icon: Database },
+  { id: 'sources', label: 'Sources', icon: Database },
 ];
 
 export default function App() {
@@ -113,18 +115,18 @@ export default function App() {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1 overflow-x-auto">
+          <nav className="flex items-center gap-0.5 overflow-x-auto">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setHash({ tab: id === 'dashboard' ? null : id, state: id === 'dashboard' ? null : selectedState })}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   activeTab === id
                     ? 'bg-slate-900 border border-slate-800 text-cyan-400 font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white hover:bg-slate-900/30'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className="w-3.5 h-3.5 hidden 2xl:block" />
                 {t(`nav.${id}`) || label}
               </button>
             ))}
@@ -178,6 +180,7 @@ export default function App() {
         )}
 
         <Suspense fallback={<div className="py-16 text-center text-xs text-slate-500">Loading…</div>}>
+        {activeTab === 'parties' && <PartyScoreboard onOpenParty={setPartyId} />}
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
         {activeTab === 'candidates' && <CandidatesTable initialFilterState={selectedState} />}
         {activeTab === 'ngos' && <NgosTracker onOpenNgo={setNgoId} />}

@@ -120,3 +120,6 @@ export const useNgoStateTotals = () =>
 
 export const useLokSabhaSeats = () =>
   useQuery({ queryKey: ['seats-ls-2024'], queryFn: () => apiGet('/api/v1/seats/lok-sabha-2024') });
+
+export const usePartyScoreboard = () =>
+  useQuery({ queryKey: ['party-scoreboard'], queryFn: () => apiGet('/api/v1/parties/scoreboard') });

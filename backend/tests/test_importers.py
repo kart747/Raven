@@ -168,7 +168,7 @@ def test_api_endpoints_respond_on_an_empty_database(tmp_path):
     script = """
 from fastapi.testclient import TestClient
 from app.main import app
-paths = ["/api/v1/parties", "/api/v1/donations", "/api/v1/donations/stats", "/api/v1/candidates",
+paths = ["/api/v1/parties", "/api/v1/parties/scoreboard", "/api/v1/donations", "/api/v1/donations/stats", "/api/v1/candidates",
          "/api/v1/candidates/state-summary", "/api/v1/candidates/elections", "/api/v1/ngos",
          "/api/v1/ngos/stats", "/api/v1/ngos/state-totals", "/api/v1/mp-activity/stats", "/api/v1/questions",
          "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows", "/api/v1/seats/lok-sabha-2024",

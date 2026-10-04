@@ -29,6 +29,8 @@ PARTIES_MASTER: dict[str, str] = {
     "AIMIM":  "All India Majlis-E-Ittehadul Muslimeen",
     "RSP":    "Revolutionary Socialist Party",
     "BSP":    "Bahujan Samaj Party",
+    "SS(UBT)": "Shiv Sena (Uddhav Balasaheb Thackeray)",
+    "NCP(SP)": "Nationalist Congress Party – Sharadchandra Pawar",
 }
 
 # Party account names as they appear in the SBI/ECI redemption disclosure -> party ID.
