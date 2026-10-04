@@ -1,13 +1,24 @@
 # Production entry point: HTTPS (automatic certificates), static UI, API on the same origin.
 {$DOMAIN:localhost} {
-	encode zstd gzip
+	# The live stream (server-sent events) must reach the browser unbuffered, so it is not compressed
+	@compress not path /api/v1/live/stream
+	encode @compress zstd gzip
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
-		X-Frame-Options DENY
+		# Charts are embeddable (#embed=...) on other sites. Nothing uses cookies or logins,
+		# so allowing framing carries no clickjacking risk.
+		Content-Security-Policy "frame-ancestors *"
 		-Server
+	}
+
+	@stream path /api/v1/live/stream
+	handle @stream {
+		reverse_proxy backend:8000 {
+			flush_interval -1
+		}
 	}
 
 	@api path /api/* /docs* /openapi.json

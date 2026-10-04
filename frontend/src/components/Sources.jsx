@@ -36,25 +36,27 @@ const fmtNum = v => v == null ? '—' : Number(v).toLocaleString('en-IN');
 // ── Per-source config ─────────────────────────────────────────────────────────
 const SOURCES = [
   {
-    id: 'pib',
+    id: 'live',
     icon: Radio,
     iconColor: 'text-cyan-400',
     iconBg: 'from-cyan-500/20 to-cyan-500/5',
     borderAccent: 'border-l-cyan-500',
     pill: { label: 'Live Feed', color: 'bg-cyan-950/60 border-cyan-800/40 text-cyan-400' },
-    name: 'Press Information Bureau (PIB)',
-    subtitle: 'Government of India — Official RSS Intelligence Feed',
+    name: 'Live headlines: PIB, RBI, news publishers, GDELT',
+    subtitle: '21 public RSS feeds and the GDELT DOC 2.0 API',
     url: 'https://pib.gov.in',
-    license: 'Open Government Data / Public Domain',
-    licenseUrl: 'https://pib.gov.in/indexd.aspx',
-    refresh: 'Live · 15-minute in-memory cache',
-    dataType: 'Press releases, policy announcements, ministry briefs',
+    license: 'Headline, link and time only; full stories stay on the publisher\'s site',
+    licenseUrl: 'https://www.gdeltproject.org/about.html#termsofuse',
+    refresh: 'Each source on its own interval (10–15 min), checked every 2 min',
+    dataType: 'Government press releases, RBI notices, political, national, court and fact-check headlines, Hindi news',
     description:
-      'Official government press releases ingested directly from PIB\'s live RSS Main feed. ' +
-      'Covers all central ministries and departments. Data is cached in-memory for 15 minutes ' +
-      'to minimise load on the government portal while keeping intelligence fresh.',
-    stats: null, // populated dynamically below
-    limitation: null,
+      'Headlines are collected from each publisher\'s own RSS feed (Press Information Bureau, RBI, national and Hindi ' +
+      'newspapers, legal news, fact-checkers) and from GDELT for global coverage of India. robots.txt is honoured, ' +
+      'requests are conditional (ETag / Last-Modified) and failing sources back off. Headlines are tagged when they ' +
+      'name an MP, party, bond purchaser or state exactly, and are kept for 60 days.',
+    stats: null,
+    limitation: 'PIB\'s feed gives no publication time, so PIB items show when Raven first saw them ("seen …"). ' +
+      'Tags are exact name matches in the headline and can include different people who share a name.',
     datasetUrl: null,
   },
   {

@@ -274,3 +274,50 @@ class MemberTerm(Base):
     membership = Column(String, nullable=True)                # Elected / Nominated
     source_url = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class LiveSource(Base):
+    """A live feed Raven polls, with its health."""
+    __tablename__ = "live_sources"
+
+    key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False, index=True)
+    url = Column(String, nullable=False)
+    homepage = Column(String, nullable=True)
+    language = Column(String, nullable=True)
+    last_fetch_at = Column(DateTime, nullable=True)
+    last_ok_at = Column(DateTime, nullable=True)
+    last_status = Column(String, nullable=True)      # ok | not-modified | robots-disallowed | http-403 | error: ...
+    consecutive_failures = Column(Integer, nullable=False, default=0)
+    etag = Column(String, nullable=True)
+    last_modified = Column(String, nullable=True)
+    items_total = Column(Integer, nullable=False, default=0)
+
+
+class LiveItem(Base):
+    """A headline seen on a live source: title, link, time. Article text is never stored."""
+    __tablename__ = "live_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source_key = Column(String, ForeignKey("live_sources.key"), nullable=False, index=True)
+    url = Column(String, nullable=False, unique=True)
+    title = Column(String, nullable=False)
+    published_at = Column(DateTime, nullable=False, index=True)
+    fetched_at = Column(DateTime, nullable=False)
+    time_estimated = Column(Boolean, nullable=True)   # True when the feed gave no usable date (time first seen)
+    category = Column(String, nullable=False, index=True)
+    language = Column(String, nullable=True)
+
+
+class LiveMention(Base):
+    """A Raven entity named in a live headline (exact name match)."""
+    __tablename__ = "live_mentions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    item_id = Column(Integer, ForeignKey("live_items.id"), nullable=False, index=True)
+    kind = Column(String, nullable=False, index=True)     # mp | party | purchaser | state
+    ref = Column(String, nullable=False, index=True)      # MPActivity id, party id, donor id or state name
+    label = Column(String, nullable=False)
+
+    __table_args__ = (Index("ix_live_mentions_kind_ref", "kind", "ref"),)

@@ -3,6 +3,7 @@ import { ExternalLink, X } from 'lucide-react';
 import { fiscalYear, formatCrore } from '../lib/format';
 import { usePartyProfile } from '../lib/queries';
 import Spinner from './ui/Spinner';
+import InTheNews from './live/InTheNews';
 
 function Stat({ label, value, sub }) {
   return (
@@ -113,6 +114,8 @@ export default function PartyProfile({ partyId, onClose, onOpenDonor, onOpenCand
                   </div>
                 </div>
               </div>
+
+              <InTheNews kind="party" refId={p.id} />
 
               <ul className="text-[10px] text-slate-500 list-disc pl-4 space-y-0.5">
                 {p.notes.map((n) => <li key={n}>{n}</li>)}

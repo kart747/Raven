@@ -31,6 +31,7 @@ back to the original source on every record.
 
 | Area | What you get |
 |---|---|
+| **Live** | Headlines from 21 public feeds (PIB, RBI, national, political, court and fact-check desks, Hindi news, GDELT), streamed to the browser as they arrive and tagged with the MPs, parties, bond purchasers and states they name. Profiles show "In the news"; a trending panel shows who is named most in the last 24 hours. |
 | **Key facts** | Plain statements computed live from the data (e.g. share of MPs declaring cases, largest bond recipient), each linking to the records behind it. No AI wording. |
 | **Electoral bonds** | All 20,384 encashed bonds (Apr 2019 – Feb 2024), joined to purchasers on the unique bond number. Search, filter by party, year or purchaser, export CSV. |
 | **Purchaser profiles** | Each company's total, the parties it funded, monthly encashments, and every spelling SBI printed for the name. Optional sourced events (court orders, raids, contract awards) can be shown on the same timeline. |
@@ -59,7 +60,7 @@ back to the original source on every record.
 | FCRA foreign contributions | MHA annual returns ([mkonchady/fcra](https://github.com/mkonchady/fcra)) | Local clone |
 | Candidate affidavits (Lok Sabha 2024 and all 31 state/UT assemblies) | [MyNeta](https://myneta.info/) (ADR) | Scraped, rate-limited, cached |
 | MP activity, bills & questions (ODbL-1.0) | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity), from sansad.in | Downloaded on import |
-| Press releases | PIB RSS (English national feed) | Live, cached 15 minutes |
+| Live headlines | Publishers' own RSS feeds (PIB, RBI, The Hindu, Indian Express, ThePrint, Mint, ET, NDTV, TOI, HT, News18, Scroll, The News Minute, Bar & Bench, Supreme Court Observer, Alt News, BBC Hindi, NDTV Khabar) and the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/); list in [`backend/app/live/sources.py`](backend/app/live/sources.py) | Polled (robots.txt honoured, conditional requests, back-off). Only headline, link and time are stored; kept 60 days |
 | Lok Sabha seat boundaries | [DataMeet `india_pc_2019_simplified`](https://github.com/datameet/maps/tree/master/parliamentary-constituencies) (CC0), 2008 delimitation; Assam and J&K seats were redrawn later and are flagged | Bundled (`frontend/public/india-pc.geojson`, rebuilt with `python -m app.cli build-seat-map`) |
 | State boundaries (map) | [DataMeet `States/Admin2`](https://github.com/datameet/maps/tree/master/States) (MIT), updated to the Survey of India map incl. Ladakh and J&K | Bundled (`frontend/public/india.geojson`) |
 | Optional: FCRA status, purchaser industry and events | Your own sourced CSVs, see [data/README.md](data/README.md) | `data/*.csv` |
@@ -106,6 +107,8 @@ python -m app.cli ingest-events       # sourced purchaser events
 python -m app.cli brief               # regenerate the AI brief
 python -m app.cli ingest-fcra-status LIST.xlsx --status Cancelled --source-url URL
 python -m app.cli export-release      # CSV + manifest bundle in data/releases/
+python -m app.cli live-poll           # fetch every live feed once (the API also polls every 2 minutes)
+python -m app.cli live-worker         # poll live feeds in a separate process (then set LIVE_ENABLED=0)
 ```
 
 ### Docker (Postgres)
@@ -137,6 +140,8 @@ Set in `backend/.env` (see `.env.example`):
 | `DATABASE_URL` | Postgres URL. Empty means a local SQLite file. |
 | `ENABLE_SCHEDULED_INGEST` | `1` re-imports Lok Sabha activity weekly inside the API process. |
 | `RATE_LIMIT_PER_MINUTE` | Per-IP limit on `/api` requests (0 = off). |
+| `LIVE_ENABLED` | `1` (default) polls live feeds inside the API process. Set `0` when a separate `python -m app.cli live-worker` does it. |
+| `LIVE_RETENTION_DAYS` | How long live headlines are kept (default 60). |
 
 Frontend: `VITE_API_URL` points the UI at the API.
 
@@ -154,6 +159,19 @@ Frontend: `VITE_API_URL` points the UI at the API.
 - **Name merging:** SBI printed purchaser names inconsistently (`VEDANTA LTD` / `VEDANTA LIMITED`, names cut at 35 characters). Spellings are merged only when they differ in spacing, punctuation, "&"/"AND", the legal suffix, or truncation. Individuals and their HUFs are never merged, and every raw spelling is kept.
 - **Fiscal years** use the April–March start year everywhere (FY2019 = Apr 2019 – Mar 2020).
 - **States** use one canonical list so filters, imports and the map agree.
+- **Live layer** (`app/live/`): a catalogue of feeds, each with its own interval; a poller that checks robots.txt, sends
+  conditional requests, backs off on errors and stores only headline, link and time; a tagger that links headlines to
+  Raven's MPs, parties, purchasers and states by exact name; and a server-sent-events stream (`/api/v1/live/stream`)
+  that pushes new rows to open browsers.
+
+### Prior art
+
+The live layer borrows ideas from open-source monitoring dashboards, mainly the feed catalogue with per-feed health of
+[World Monitor](https://github.com/koala73/worldmonitor) (AGPL-3.0). Other projects worth knowing:
+[GDELT](https://www.gdeltproject.org/) (global news events, used here),
+[IRONSIGHT](https://www.blog.brightcoding.dev/2026/06/25/ironsight-the-free-osint-dashboard-exposing-middle-east-intel-in-real-time) (MIT)
+and [Osiris](https://cloudnews.tech/osiris-brings-real-time-osint-to-github-but-also-sparks-a-security-debate/) (MIT).
+Raven differs in linking each headline to the public records it already holds, and in not collecting social media.
 
 Layout:
 
@@ -177,6 +195,7 @@ docker-compose.yml  Postgres + API + web
 - Question-to-company links are exact matches of a company's distinctive name in the question *title* only. Single-word names, generic names and individuals are never matched, so some real mentions are missed by design.
 - Lok Sabha by-elections (e.g. Wayanad and Nanded, Nov 2024) are kept as separate elections; Lok Sabha 2024 statistics use the 543 general-election seats.
 - Lok Sabha 2024 includes every candidate MyNeta analysed. About 580 of them don't appear on MyNeta's constituency lists and MyNeta gives no reason; they are included (as in ADR's published totals) and never marked as winners.
+- Live headlines are not checked for accuracy; they are what each publisher published. PIB's feed has no times, so PIB items show when Raven first saw them. Tags are exact name matches in the headline only.
 - MyNeta's paginated lists skip rows, so Lok Sabha candidates are read constituency by constituency and MLAs are checked against MyNeta's published totals; each import reports any shortfall.
 
 ## Roadmap

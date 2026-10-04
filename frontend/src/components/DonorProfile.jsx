@@ -3,6 +3,7 @@ import { ExternalLink, X } from 'lucide-react';
 import { formatCrore } from '../lib/format';
 import { useDonorProfile } from '../lib/queries';
 import Spinner from './ui/Spinner';
+import InTheNews from './live/InTheNews';
 
 /** Monthly encashment totals, with every event month present so reference lines have an x position. */
 function monthlySeries(profile) {
@@ -99,6 +100,8 @@ export default function DonorProfile({ donorId, onClose, onOpenParty }) {
                   Exact name matches in question titles only. Asking about a company says nothing about the member's
                   relationship with it.
                 </p>
+
+                <div className="mt-4"><InTheNews kind="purchaser" refId={p.id} /></div>
 
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-4">Sourced events</h4>
                 {p.events.length === 0 ? (

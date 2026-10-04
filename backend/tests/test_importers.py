@@ -172,14 +172,15 @@ paths = ["/api/v1/parties", "/api/v1/parties/scoreboard", "/api/v1/donations", "
          "/api/v1/candidates/state-summary", "/api/v1/candidates/elections", "/api/v1/ngos",
          "/api/v1/ngos/stats", "/api/v1/ngos/state-totals", "/api/v1/mp-activity/stats", "/api/v1/questions",
          "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows", "/api/v1/seats/lok-sabha-2024", "/api/v1/asset-growth",
-         "/api/v1/search?q=ab", "/api/v1/insights", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources"]
+         "/api/v1/search?q=ab", "/api/v1/insights", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources",
+         "/api/v1/live", "/api/v1/live/sources", "/api/v1/live/trending"]
 with TestClient(app) as client:
     bad = [(p, client.get(p).status_code) for p in paths]
     bad = [b for b in bad if b[1] != 200]
     assert not bad, bad
 print("ok")
 """
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'empty.db'}", "GROQ_API_KEY": ""}
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'empty.db'}", "GROQ_API_KEY": "", "LIVE_ENABLED": "0"}
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr[-2000:]
@@ -198,7 +199,7 @@ with TestClient(app) as client:
     assert client.get("/").status_code == 200  # non-API paths are not limited
 print("ok")
 """
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'rl.db'}", "RATE_LIMIT_PER_MINUTE": "3", "GROQ_API_KEY": ""}
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'rl.db'}", "RATE_LIMIT_PER_MINUTE": "3", "GROQ_API_KEY": "", "LIVE_ENABLED": "0"}
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr[-2000:]
@@ -247,6 +248,13 @@ db.add(m.MPActivity(mp_name="New Member", constituency="Kurnoolu", party_name="A
                     bills_introduced=0, official_url="t"))
 db.add(m.ParliamentQuestion(lok_sabha=18, date="2024-12-01", title="Acme Industries contracts", question_type="Unstarred",
                             ministry="Mines", representative="New Member", official_url="t", source_url="t"))
+db.add(m.LiveSource(key="feed", name="A Feed", category="politics", url="t", homepage="t"))
+# Collected out of order: id 3 was published first, so it lists last and is not "new" to the stream
+for i, (title, mins) in enumerate([("Alpha Party wins", 5), ("Asha Rao speaks", 1), ("Old story", 120)], start=1):
+    db.add(m.LiveItem(id=i, source_key="feed", url=f"https://x.in/{i}", title=title, category="politics",
+                      language="en", published_at=now - datetime.timedelta(minutes=mins), fetched_at=now))
+db.add_all([m.LiveMention(item_id=1, kind="party", ref="AAA", label="Alpha Party"),
+            m.LiveMention(item_id=2, kind="party", ref="AAA", label="Alpha Party")])
 db.commit()
 mp_id = db.query(m.MPActivity.id).scalar()
 
@@ -276,10 +284,17 @@ with TestClient(app_module.app) as c:
     assert prof["party"] == "Alpha Party" and prof["is_winner"]
     assert [x["name"] for x in prof["seat_field"]] == ["Asha Rao", "Ravi Rao"]   # same election only, winner first
     assert c.get("/api/v1/candidates/999999/profile").status_code == 404
+
+    live = c.get("/api/v1/live").json()
+    assert [i["id"] for i in live["data"]] == [2, 1, 3] and live["latest_id"] == 3   # time order; stream resumes after 3
+    assert [i["id"] for i in c.get("/api/v1/live?before_id=1").json()["data"]] == [3]  # paging follows the same order
+    assert [i["id"] for i in c.get("/api/v1/live?kind=party&ref=AAA").json()["data"]] == [2, 1]
+    trend = c.get("/api/v1/live/trending").json()
+    assert trend["trending"]["party"] == [{"ref": "AAA", "label": "Alpha Party", "headlines": 2}], trend
 print("ok")
 """
     script = script.replace("from fastapi.testclient import TestClient", "from fastapi.testclient import TestClient\nimport app.main as app_module")
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'fixture.db'}", "GROQ_API_KEY": ""}
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'fixture.db'}", "GROQ_API_KEY": "", "LIVE_ENABLED": "0"}
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr[-3000:]
@@ -333,3 +348,24 @@ def test_member_term_name_matching_is_conservative():
     assert same_person("Vijay Kumar", "Vijay Kumar Hansdak")
     assert not same_person("Rahul Kumar", "Pankaj Kumar")      # a shared surname alone is not enough
     assert not same_person("A. K.", "A. K.")                  # initials only: nothing significant to compare
+
+
+def test_live_parsing_and_url_cleaning():
+    from app.live.poller import clean_url, parse_gdelt, parse_rss
+    assert clean_url("https://Example.com/a?utm_source=x&id=5#top") == "https://example.com/a?id=5"
+    assert clean_url("https://www.bbc.co.uk/hindi/articles/x?at_medium=RSS&at_campaign=rss") == "https://www.bbc.co.uk/hindi/articles/x"
+    rss = b"""<rss><channel><item><title>Rahul Gandhi &amp; BJP</title><link>https://x.in/a?utm_medium=rss</link>
+      <pubDate>Sat, 04 Oct 2026 10:00:00 +0530</pubDate></item><item><title></title><link>https://x.in/b</link></item></channel></rss>"""
+    [item] = parse_rss(rss)
+    assert item["title"] == "Rahul Gandhi & BJP" and item["url"] == "https://x.in/a"
+    assert item["published_at"].hour == 4 and item["published_at"].minute == 30          # stored in UTC
+    [g] = parse_gdelt({"articles": [{"title": "Lok Sabha passes bill", "url": "https://y.in/c", "seendate": "20261004T101500Z"}]})
+    assert g["published_at"].minute == 15
+
+
+def test_live_dates_without_timezone_are_read_as_ist():
+    from app.live.poller import parse_rss
+    rss = b"""<rss><channel><item><title>RBI circular</title><link>https://rbi.org.in/x</link>
+      <pubDate>Fri, 02 Oct 2026 11:15:00</pubDate></item></channel></rss>"""
+    [item] = parse_rss(rss)
+    assert (item["published_at"].hour, item["published_at"].minute) == (5, 45)     # 11:15 IST = 05:45 UTC

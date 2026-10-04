@@ -26,12 +26,25 @@ services:
       ALLOWED_ORIGINS: https://${DOMAIN:?set DOMAIN}
       ENABLE_SCHEDULED_INGEST: "1"
       RATE_LIMIT_PER_MINUTE: "120"
+      LIVE_ENABLED: "0"          # the live service below does the polling
     volumes: &backend_volumes
       - ./data:/srv/data
       - ./cvrajeesh_repo:/srv/cvrajeesh_repo:ro
       - ./fcra_repo:/srv/fcra_repo:ro
       - ./backend/data_cache:/srv/backend/data_cache
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Polls the live feeds (robots.txt, conditional requests, per-source intervals) in its own process,
+  # so the API only reads. The API's /live/stream picks up new rows from the shared database.
+  live:
+    build: ./backend
+    env_file: ./backend/.env
+    environment: *backend_env
+    command: ["python", "-m", "app.cli", "live-worker"]
     depends_on:
       db:
         condition: service_healthy

@@ -64,7 +64,8 @@ def fetch_live_pib_feed(mod_id: int, regid: int) -> List[dict]:
         feed_url,
         timeout=PIB_HTTP_TIMEOUT_SECONDS,
         headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            # Identify honestly; PIB's firewall rejects user-agents containing a contact URL
+            "User-Agent": "Raven/1.2"
         },
     )
     response.raise_for_status()

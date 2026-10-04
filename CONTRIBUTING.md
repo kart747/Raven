@@ -39,6 +39,22 @@ cd frontend && npm run build
 7. **Data quality:** add the dataset to `/api/v1/data-quality` with its coverage and gaps.
 8. **Docs:** add the source to the README's data table and its known gaps to "Data quality and known gaps".
 
+## Adding a live feed
+
+Live sources are listed in `backend/app/live/sources.py`. To add one:
+
+1. Use the **publisher's own** RSS/Atom feed or an open API. No aggregators that forbid reuse (e.g. Google News),
+   no scraping of article pages, and nothing behind a login or paywall.
+2. Check the site's `robots.txt` allows the feed URL (the poller also checks, and skips the source if not).
+3. Add a `Source(key, name, url, category, homepage, language)`. Use an existing category if one fits, and a
+   `min_interval_minutes` of 10 or more.
+4. Run `python -m app.cli live-poll --only <key>` and check the headlines, times and links look right. If the
+   feed has no dates, items are shown as "seen" at the time Raven first saw them; say so in the PR.
+5. If the source names people, parties or companies in a way the tagger misses (abbreviations, nicknames),
+   add an alias in `backend/app/live/tagger.py`, then run `python -m app.cli live-retag`.
+
+Only the headline, link and time are stored. Don't add fields that copy article text.
+
 ## Translations
 
 Interface text lives in `frontend/src/lib/i18n.js` as key → string per language. To add a language, copy the

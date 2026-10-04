@@ -2,6 +2,7 @@ import { ExternalLink, X } from 'lucide-react';
 import { formatCrore } from '../lib/format';
 import { useMpProfile } from '../lib/queries';
 import Spinner from './ui/Spinner';
+import InTheNews from './live/InTheNews';
 
 function Stat({ label, value }) {
   return (
@@ -86,6 +87,8 @@ export default function MpProfile({ mpId, onClose, onOpenParty }) {
                   ) : <p className="text-xs text-slate-500">No questions found under this name.</p>}
                 </div>
               </div>
+
+              <InTheNews kind="mp" refId={m.id} />
 
               {m.career?.length > 0 && (
                 <div>

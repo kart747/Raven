@@ -4,6 +4,7 @@ import { createContext, useContext } from 'react';
 const STRINGS = {
   en: {
     'nav.dashboard': 'Dashboard',
+    'nav.live': 'Live',
     'nav.parties': 'Parties',
     'nav.donations': 'Electoral Bonds',
     'nav.candidates': 'Candidates',
@@ -39,6 +40,7 @@ const STRINGS = {
   },
   hi: {
     'nav.dashboard': 'डैशबोर्ड',
+    'nav.live': 'लाइव',
     'nav.parties': 'राजनीतिक दल',
     'nav.donations': 'चुनावी बॉन्ड',
     'nav.candidates': 'उम्मीदवार',

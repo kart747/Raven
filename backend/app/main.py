@@ -1,4 +1,6 @@
+import asyncio
 import csv
+import datetime
 import difflib
 import json
 import logging
@@ -13,7 +15,7 @@ from io import StringIO
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import and_, case, desc, func, or_
@@ -60,6 +62,16 @@ def _warn_if_empty():
     return has_brief
 
 
+def _poll_live():
+    from .live.poller import poll
+    try:
+        report = poll()
+        if report:
+            logger.info("Live poll: %s", {k: v["new_items"] for k, v in report.items()})
+    except Exception:
+        logger.exception("Live poll failed")
+
+
 def _refresh_legislative():
     """Weekly re-pull of Lok Sabha activity (the source CSVs update after each session)."""
     from .legislative_ingest import ingest_legislative_data
@@ -79,6 +91,9 @@ async def lifespan(app: FastAPI):
         # Generate in the background so a slow or missing LLM never blocks startup
         threading.Thread(target=generate_and_save_weekly_brief, daemon=True).start()
     scheduler.add_job(generate_and_save_weekly_brief, "interval", days=7, id="weekly_brief_job")
+    if os.getenv("LIVE_ENABLED", "1") == "1":
+        # Live feeds: checked every 2 minutes; each source is only fetched when its own interval has passed
+        scheduler.add_job(_poll_live, "interval", minutes=2, id="live_poll_job", max_instances=1, coalesce=True)
     if os.getenv("ENABLE_SCHEDULED_INGEST") == "1":
         scheduler.add_job(_refresh_legislative, "interval", days=7, id="legislative_refresh_job")
     scheduler.start()
@@ -1257,6 +1272,121 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
     }
 
 
+# --- Live: headlines from public feeds, linked to Raven entities ---
+def _live_dicts(db, items):
+    ids = [i.id for i in items]
+    mentions = {}
+    if ids:
+        for m in db.query(models.LiveMention).filter(models.LiveMention.item_id.in_(ids)):
+            mentions.setdefault(m.item_id, []).append({"kind": m.kind, "ref": m.ref, "label": m.label})
+    names = dict(db.query(models.LiveSource.key, models.LiveSource.name))
+    return [{
+        "id": i.id, "title": i.title, "url": i.url, "source_key": i.source_key, "source": names.get(i.source_key, i.source_key),
+        "category": i.category, "language": i.language,
+        "published_at": i.published_at.isoformat() + "Z", "time_estimated": bool(i.time_estimated),
+        "mentions": mentions.get(i.id, []),
+    } for i in items]
+
+
+def _live_query(db, category=None, source=None, kind=None, ref=None, q=None):
+    L = models.LiveItem
+    query = db.query(L)
+    if category:
+        query = query.filter(L.category == category)
+    if source:
+        query = query.filter(L.source_key == source)
+    if q:
+        for word in q.split()[:6]:
+            query = query.filter(L.title.ilike(f"%{word}%"))
+    if kind and ref:
+        query = query.join(models.LiveMention, models.LiveMention.item_id == L.id)\
+            .filter(models.LiveMention.kind == kind, models.LiveMention.ref == ref)
+    return query
+
+
+@app.get("/api/v1/live")
+def read_live(
+    category: Optional[str] = Query(None), source: Optional[str] = Query(None),
+    kind: Optional[str] = Query(None, pattern="^(mp|party|purchaser|state)$"), ref: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, max_length=100),
+    before_id: Optional[int] = Query(None), limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """Latest headlines from live sources (title, link, time only), with the Raven entities they name."""
+    L = models.LiveItem
+    query = _live_query(db, category, source, kind, ref, q)
+    if before_id:   # page on from that item, in the same (time, id) order as the list
+        cursor = db.get(L, before_id)
+        if cursor is not None:
+            query = query.filter(or_(L.published_at < cursor.published_at,
+                                     and_(L.published_at == cursor.published_at, L.id < cursor.id)))
+    items = query.order_by(desc(L.published_at), desc(L.id)).limit(limit).all()
+    # The stream continues from the newest item collected, which need not be the newest by publication time
+    return {"data": _live_dicts(db, items), "latest_id": db.query(func.max(L.id)).scalar() or 0}
+
+
+@app.get("/api/v1/live/sources")
+def read_live_sources(db: Session = Depends(get_db)):
+    """Each live source with its health: last fetch, last success, status and items collected."""
+    S = models.LiveSource
+    since = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+    recent = dict(db.query(models.LiveItem.source_key, func.count(models.LiveItem.id))
+                  .filter(models.LiveItem.fetched_at >= since).group_by(models.LiveItem.source_key))
+    fmt = lambda d: d.isoformat() + "Z" if d else None  # noqa: E731
+    return [{
+        "key": s.key, "name": s.name, "category": s.category, "homepage": s.homepage, "language": s.language,
+        "last_fetch_at": fmt(s.last_fetch_at), "last_ok_at": fmt(s.last_ok_at), "last_status": s.last_status,
+        "failures": s.consecutive_failures, "items_total": s.items_total, "items_24h": recent.get(s.key, 0),
+    } for s in db.query(S).order_by(S.category, S.name)]
+
+
+@app.get("/api/v1/live/trending")
+def read_live_trending(hours: int = Query(24, ge=1, le=24 * 14), per_kind: int = Query(8, ge=1, le=30),
+                       db: Session = Depends(get_db)):
+    """Raven entities named most often in headlines over the last N hours."""
+    since = datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
+    M, L = models.LiveMention, models.LiveItem
+    n = func.count(func.distinct(M.item_id))
+    rows = db.query(M.kind, M.ref, M.label, n).join(L, L.id == M.item_id).filter(L.published_at >= since)\
+        .group_by(M.kind, M.ref, M.label).order_by(desc(n)).all()
+    out = {"mp": [], "party": [], "purchaser": [], "state": []}
+    for kind, ref, label, count in rows:
+        if len(out[kind]) < per_kind:
+            out[kind].append({"ref": ref, "label": label, "headlines": count})
+    total = db.query(func.count(L.id)).filter(L.published_at >= since).scalar()
+    return {"hours": hours, "headlines": total, "trending": out,
+            "note": "Counts of headlines that name the entity exactly. Being named is not an indication of anything else."}
+
+
+@app.get("/api/v1/live/stream")
+async def stream_live(request: Request, after: int = Query(0, ge=0)):
+    """Server-sent events: pushes each new headline as it is collected."""
+    async def events():
+        last = after
+        idle = 0
+        def newer_than(item_id):
+            db = SessionLocal()
+            try:
+                rows = db.query(models.LiveItem).filter(models.LiveItem.id > item_id)\
+                    .order_by(models.LiveItem.id).limit(100).all()
+                return _live_dicts(db, rows)
+            finally:
+                db.close()
+
+        while not await request.is_disconnected():
+            payload = await asyncio.to_thread(newer_than, last)   # keep blocking DB work off the event loop
+            for item in payload:
+                last = max(last, item["id"])
+                yield f"event: item\ndata: {json.dumps(item)}\n\n"
+            idle = 0 if payload else idle + 1
+            if idle % 3 == 0:
+                yield ": keep-alive\n\n"
+            await asyncio.sleep(10)
+
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 # --- Search across every dataset ---
 @app.get("/api/v1/search")
 def search_everything(
@@ -1525,5 +1655,19 @@ def read_data_quality(db: Session = Depends(get_db)):
             "rows": db.query(func.count(models.WeeklyBrief.id)).scalar(),
             "last_loaded": brief.created_at.isoformat() if brief else None,
             "metrics": [{"label": "Model", "value": brief_model or "—"}],
+        },
+        {
+            "id": "live", "label": "Live headlines",
+            "rows": db.query(func.count(models.LiveItem.id)).scalar(),
+            "last_loaded": (lambda ts: ts.isoformat() if ts else None)(db.query(func.max(models.LiveItem.fetched_at)).scalar()),
+            "metrics": [
+                {"label": "Sources responding",
+                 "value": f"{db.query(func.count(models.LiveSource.key)).filter(models.LiveSource.last_status.in_(['ok', 'not-modified'])).scalar()}"
+                          f" of {db.query(func.count(models.LiveSource.key)).scalar()}"},
+                {"label": "Headlines without a feed time", "value": db.query(func.count(models.LiveItem.id))
+                    .filter(models.LiveItem.time_estimated.is_(True)).scalar()},
+                {"label": "Headlines naming a Raven entity", "value": db.query(func.count(func.distinct(models.LiveMention.item_id))).scalar()},
+                {"label": "Kept for", "value": f"{os.getenv('LIVE_RETENTION_DAYS', '60')} days"},
+            ],
         },
     ]

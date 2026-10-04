@@ -1,10 +1,10 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { AlertCircle, Award, BarChart3, Database, Flag, Globe, Landmark, Search, Sparkles, UserCheck } from 'lucide-react';
+import { AlertCircle, Award, BarChart3, Database, Flag, Globe, Landmark, Radio, Search, Sparkles, UserCheck } from 'lucide-react';
 import DashboardStats from './components/DashboardStats';
 import IndiaMap from './components/IndiaMap';
 import useHashParams from './lib/useHashParams';
 import { LANGS, LangContext, translate } from './lib/i18n';
-import PibTicker from './components/dashboard/PibTicker';
+import LiveTicker from './components/dashboard/LiveTicker';
 import BondFlows from './components/dashboard/BondFlows';
 import KeyFacts from './components/dashboard/KeyFacts';
 import StateDossier from './components/dashboard/StateDossier';
@@ -26,6 +26,7 @@ const SeatMap = lazy(() => import('./components/SeatMap'));
 const PartyScoreboard = lazy(() => import('./components/PartyScoreboard'));
 const AssetGrowth = lazy(() => import('./components/AssetGrowth'));
 const CandidateProfile = lazy(() => import('./components/CandidateProfile'));
+const LivePanel = lazy(() => import('./components/live/LivePanel'));
 
 // Widgets available at #embed=<id> for use in <iframe>s
 const EMBEDS = {
@@ -34,10 +35,12 @@ const EMBEDS = {
   map: (p) => <IndiaMap selectedState={null} onSelectState={p.onSelectState}
     lsSummary={p.lsSummary} vsSummary={p.vsSummary} ngoTotals={p.ngoTotals} />,
   seats: (p) => <Suspense fallback={null}><SeatMap onOpenMp={p.onOpenMp} /></Suspense>,
+  live: (p) => <Suspense fallback={null}><LivePanel compact onOpenEntity={p.onOpenEntity} /></Suspense>,
 };
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+  { id: 'live', label: 'Live', icon: Radio },
   { id: 'parties', label: 'Parties', icon: Flag },
   { id: 'donations', label: 'Electoral Bonds', icon: Landmark },
   { id: 'candidates', label: 'Candidates', icon: Award },
@@ -66,6 +69,13 @@ export default function App() {
   const setPartyId = (id) => setHash({ party: id });
   const setMpId = (id) => setHash({ mp: id });
   const setCandidateId = (id) => setHash({ cand: id });
+  // Live headline tags -> the matching profile
+  const openEntity = ({ kind, ref }) => {
+    if (kind === 'mp') setMpId(Number(ref));
+    else if (kind === 'party') setPartyId(ref);
+    else if (kind === 'purchaser') setDonorId(Number(ref));
+    else if (kind === 'state') setHash({ tab: null, state: ref });
+  };
 
   const [searchOpen, setSearchOpen] = useState(false);
   const embed = hash.embed;
@@ -93,6 +103,7 @@ export default function App() {
         <div className="min-h-screen bg-slate-950 text-slate-100 p-3 flex flex-col gap-2">
           {EMBEDS[embed]({
             onOpenDonor: (donor) => open({ donor }), onOpenParty: (party) => open({ party }), onOpenMp: (mp) => open({ mp }),
+            onOpenEntity: ({ kind, ref }) => open(kind === 'state' ? { state: ref } : { [{ mp: 'mp', party: 'party', purchaser: 'donor' }[kind]]: ref }),
             onNavigate: (link) => open(link), onSelectState: (state) => open({ state }),
             lsSummary: stateStats, vsSummary: mlaStats, ngoTotals,
           })}
@@ -167,7 +178,7 @@ export default function App() {
             <KeyFacts onNavigate={(link) => setHash(link)} />
             <DashboardStats stats={stats} loading={statsLoading} onOpenDonor={setDonorId} onOpenParty={setPartyId} />
             <BondFlows onOpenDonor={setDonorId} onOpenParty={setPartyId} />
-            <PibTicker />
+            <LiveTicker onOpenLive={() => setActiveTab('live')} />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-7">
                 {hash.map === 'seats' ? (
@@ -187,6 +198,7 @@ export default function App() {
         )}
 
         <Suspense fallback={<div className="py-16 text-center text-xs text-slate-500">Loading…</div>}>
+        {activeTab === 'live' && <LivePanel onOpenEntity={openEntity} />}
         {activeTab === 'parties' && <PartyScoreboard onOpenParty={setPartyId} />}
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
         {activeTab === 'candidates' && (

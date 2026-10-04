@@ -132,3 +132,12 @@ export const useAssetGrowthElections = () =>
 
 export const useCandidateProfile = (id) =>
   useQuery({ queryKey: ['candidate', id], queryFn: () => apiGet(`/api/v1/candidates/${id}/profile`), enabled: id != null });
+
+export const useLive = (params) =>
+  useQuery({ queryKey: ['live', params], queryFn: () => apiGet('/api/v1/live', params), refetchInterval: 5 * 60 * 1000 });
+
+export const useLiveTrending = (hours = 24) =>
+  useQuery({ queryKey: ['live-trending', hours], queryFn: () => apiGet('/api/v1/live/trending', { hours }), refetchInterval: 2 * 60 * 1000 });
+
+export const useLiveSources = () =>
+  useQuery({ queryKey: ['live-sources'], queryFn: () => apiGet('/api/v1/live/sources'), refetchInterval: 2 * 60 * 1000 });

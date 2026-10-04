@@ -13,6 +13,8 @@ Data management commands. Run from backend/:
     python -m app.cli ingest-questions     # Lok Sabha questions 2009-now, linked to bond purchasers
     python -m app.cli ingest-events        # sourced events about purchasers (data/entity_events.csv)
     python -m app.cli brief                # regenerate the AI brief
+    python -m app.cli live-poll            # fetch every live source once now
+    python -m app.cli live-worker          # keep polling live sources (each at its own interval)
     python -m app.cli build-seat-map       # constituency map joined to candidate data (frontend/public)
     python -m app.cli export-release       # open data release: CSVs + manifest in data/releases/
     python -m app.cli ingest-all           # all of the above, in order
@@ -91,6 +93,31 @@ def build_seat_map():
     print(json.dumps(run_build(), indent=2))
 
 
+def live_poll(only=None):
+    from .live.poller import poll
+    print(json.dumps(poll(force=True, only=only), indent=2))
+
+
+def live_retag():
+    from .live.poller import retag
+    print(json.dumps(retag(), indent=2))
+
+
+def live_worker():
+    """Poll live sources forever (each source keeps its own interval). For a separate worker process."""
+    import time
+    from .live.poller import poll
+    while True:
+        try:
+            report = poll()
+        except Exception as exc:   # e.g. the database restarting; try again next round
+            print(f"poll failed: {exc}", flush=True)
+            report = {}
+        for key, r in report.items():
+            print(f"{key}: {r['status']} (+{r['new_items']})", flush=True)
+        time.sleep(60)
+
+
 def export_release(previous=None):
     from .export_release import run_export
     print(json.dumps(run_export(previous_manifest=previous), indent=2))
@@ -115,6 +142,9 @@ COMMANDS = {
     "brief": brief,
     "export-release": export_release,
     "build-seat-map": build_seat_map,
+    "live-poll": live_poll,
+    "live-worker": live_worker,
+    "live-retag": live_retag,
 }
 
 
@@ -125,6 +155,7 @@ def main():
     parser.add_argument("--status", help="ingest-fcra-status: Active | Suspended | Cancelled")
     parser.add_argument("--source-url", help="ingest-fcra-status: page the list was downloaded from")
     parser.add_argument("--previous", help="export-release: previous release's manifest.json, to report changes")
+    parser.add_argument("--only", nargs="+", metavar="KEY", help="live-poll: poll only these sources (keys in app/live/sources.py)")
     args = parser.parse_args()
     if args.command == "ingest-fcra-status":
         if not (args.file and args.status and args.source_url):
@@ -132,6 +163,12 @@ def main():
         ingest_fcra_status(args)
     elif args.command == "export-release":
         export_release(args.previous)
+    elif args.command == "live-poll":
+        from .live.sources import BY_KEY
+        unknown = [k for k in args.only or [] if k not in BY_KEY]
+        if unknown:
+            parser.error(f"unknown live source {', '.join(unknown)}; known: {', '.join(BY_KEY)}")
+        live_poll(args.only)
     elif args.command == "ingest-all":
         for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-asset-growth", "ingest-legislative", "ingest-member-terms", "ingest-questions", "ingest-events", "brief"):
             print(f"\n=== {name} ===")

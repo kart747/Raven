@@ -52,10 +52,11 @@ Open `https://raven.example.org`.
 |---|---|
 | HTTPS | Caddy, automatic certificates, HTTP redirects to HTTPS |
 | Same-origin API | Caddy proxies `/api`, `/docs` and `/openapi.json`, so no CORS setup is needed |
-| Security headers | HSTS, `nosniff`, `X-Frame-Options: DENY`, strict referrer policy |
+| Security headers | HSTS, `nosniff`, strict referrer policy; framing allowed so embeds work (no cookies or logins exist to protect) |
 | Rate limiting | 120 API requests per minute per IP (`RATE_LIMIT_PER_MINUTE`) |
 | Database | Postgres on a Docker volume, never exposed to the internet |
 | Freshness | Lok Sabha activity re-imported weekly; AI brief regenerated weekly |
+| Live headlines | The `live` service polls the feeds every few minutes (robots.txt honoured, conditional requests, back-off); the API streams new rows to browsers. Set `LIVE_RETENTION_DAYS` to change how long headlines are kept (default 60). |
 
 ## Updating
 
