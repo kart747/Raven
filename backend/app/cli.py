@@ -9,6 +9,7 @@ Data management commands. Run from backend/:
     python -m app.cli ingest-assemblies    # sitting MLAs: winners of each state's latest assembly election (MyNeta)
     python -m app.cli ingest-asset-growth  # assets 2019 -> 2024 of re-contesting 2019 MPs (MyNeta)
     python -m app.cli ingest-legislative   # Lok Sabha MP activity + private member bills
+    python -m app.cli ingest-rajya-sabha     # sitting Rajya Sabha members (sansad.in)
     python -m app.cli ingest-member-terms  # Lok Sabha members, 15th-18th, for MP careers
     python -m app.cli ingest-questions     # Lok Sabha questions 2009-now, linked to bond purchasers
     python -m app.cli ingest-events        # sourced events about purchasers (data/entity_events.csv)
@@ -61,6 +62,11 @@ def ingest_questions():
 
 def ingest_asset_growth():
     from .import_asset_growth import run_import
+    print(json.dumps(run_import(), indent=2))
+
+
+def ingest_rajya_sabha():
+    from .import_rajya_sabha import run_import
     print(json.dumps(run_import(), indent=2))
 
 
@@ -137,6 +143,7 @@ COMMANDS = {
     "ingest-asset-growth": ingest_asset_growth,
     "ingest-legislative": ingest_legislative,
     "ingest-member-terms": ingest_member_terms,
+    "ingest-rajya-sabha": ingest_rajya_sabha,
     "ingest-events": ingest_events,
     "ingest-questions": ingest_questions,
     "brief": brief,
@@ -170,7 +177,7 @@ def main():
             parser.error(f"unknown live source {', '.join(unknown)}; known: {', '.join(BY_KEY)}")
         live_poll(args.only)
     elif args.command == "ingest-all":
-        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-asset-growth", "ingest-legislative", "ingest-member-terms", "ingest-questions", "ingest-events", "brief"):
+        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-asset-growth", "ingest-legislative", "ingest-member-terms", "ingest-rajya-sabha", "ingest-questions", "ingest-events", "brief"):
             print(f"\n=== {name} ===")
             COMMANDS[name]()
     else:

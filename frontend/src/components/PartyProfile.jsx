@@ -17,7 +17,7 @@ function Stat({ label, value, sub }) {
 
 const pct = (part, whole) => (whole ? `${Math.round((100 * part) / whole)}%` : '—');
 
-export default function PartyProfile({ partyId, onClose, onOpenDonor, onOpenCandidate }) {
+export default function PartyProfile({ partyId, onClose, onOpenDonor, onOpenCandidate, onOpenRs }) {
   const { data: p, isLoading, isError } = usePartyProfile(partyId);
   if (!partyId) return null;
 
@@ -37,10 +37,11 @@ export default function PartyProfile({ partyId, onClose, onOpenDonor, onOpenCand
             </div>
 
             <div className="p-6 flex flex-col gap-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 <Stat label="Electoral bonds received" value={formatCrore(p.bonds.total, 0)} sub={`${p.bonds.count.toLocaleString('en-IN')} bonds`} />
                 <Stat label="Lok Sabha 2024" value={`${p.lok_sabha_2024.winners} won`} sub={`of ${p.lok_sabha_2024.candidates} candidates`} />
                 <Stat label="Sitting MLAs" value={p.assemblies.mlas.toLocaleString('en-IN')} sub={`${p.assemblies.by_state.length} assemblies`} />
+                <Stat label="Rajya Sabha" value={`${p.rajya_sabha.members} members`} sub="sitting (sansad.in)" />
                 <Stat label="MP attendance (18th LS)" value={p.parliament.avg_attendance_pct != null ? `${p.parliament.avg_attendance_pct}%` : '—'}
                   sub={`${p.parliament.mps_with_activity_data} MPs with data`} />
               </div>
@@ -114,6 +115,21 @@ export default function PartyProfile({ partyId, onClose, onOpenDonor, onOpenCand
                   </div>
                 </div>
               </div>
+
+              {p.rajya_sabha.members > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Rajya Sabha members ({p.rajya_sabha.members})</h4>
+                  <div className="max-h-48 overflow-y-auto pr-1 grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                    {p.rajya_sabha.list.map((m) => (
+                      <button key={m.id} onClick={() => onOpenRs(m.id)}
+                        className="text-left flex justify-between gap-2 text-xs p-1.5 rounded hover:bg-slate-900">
+                        <span className="text-slate-200 truncate">{m.name}{m.is_minister ? ' · Minister' : ''}</span>
+                        <span className="text-slate-500 flex-shrink-0">{m.state}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <InTheNews kind="party" refId={p.id} />
 

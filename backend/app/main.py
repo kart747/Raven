@@ -3,6 +3,7 @@ import csv
 import datetime
 import difflib
 import json
+from collections import Counter
 import logging
 import os
 import re
@@ -1061,27 +1062,66 @@ def read_party_scoreboard(min_seats: int = Query(1, ge=0), db: Session = Depends
     ).filter(C.election == "Lok Sabha 2024").group_by(C.party_id)}
     mla = {pid: (n, int(k or 0)) for pid, n, k in db.query(C.party_id, func.count(C.id), cases)
            .filter(C.house == "Vidhan Sabha").group_by(C.party_id)}
+    rs = dict(db.query(models.RajyaSabhaMember.party_id, func.count(models.RajyaSabhaMember.id))
+              .filter(models.RajyaSabhaMember.party_id.isnot(None)).group_by(models.RajyaSabhaMember.party_id))
     names = dict(db.query(models.Party.id, models.Party.name))
 
     def pct(a, b):
         return round(100 * a / b, 1) if b else None
 
     rows = []
-    for pid in set(bonds) | set(ls) | set(mla):
+    for pid in set(bonds) | set(ls) | set(mla) | set(rs):
         b_amt, b_n = bonds.get(pid, (0.0, 0))
         ls_n, ls_k, mps, mp_assets = ls.get(pid, (0, 0, 0, 0.0))
         mla_n, mla_k = mla.get(pid, (0, 0))
-        if mps + mla_n < min_seats and not b_amt:
+        if mps + mla_n + rs.get(pid, 0) < min_seats and not b_amt:
             continue
         rows.append({
             "party_id": pid, "party": names.get(pid, pid),
             "bonds_amount": b_amt, "bonds_count": b_n,
             "ls_candidates": ls_n, "ls_candidates_with_cases_pct": pct(ls_k, ls_n),
-            "mps_2024": mps, "avg_mp_assets": mp_assets or None,
+            "mps_2024": mps, "avg_mp_assets": mp_assets or None, "rajya_sabha": rs.get(pid, 0),
             "mlas": mla_n, "mlas_with_cases_pct": pct(mla_k, mla_n),
         })
     rows.sort(key=lambda r: (r["mps_2024"] + r["mlas"], r["bonds_amount"]), reverse=True)
     return rows
+
+
+# --- Rajya Sabha ---
+def _rs_dict(m) -> dict:
+    return {"id": m.id, "name": m.name, "name_hi": m.name_hi, "party": m.party_name, "party_id": m.party_id,
+            "state": m.state, "term_start": m.term_start, "term_end": m.term_end, "terms_served": m.terms_served,
+            "is_minister": bool(m.is_minister), "source_url": m.source_url}
+
+
+@app.get("/api/v1/rajya-sabha")
+def read_rajya_sabha(state: Optional[str] = Query(None), party_id: Optional[str] = Query(None),
+                     q: Optional[str] = Query(None, max_length=100), minister: Optional[bool] = Query(None),
+                     db: Session = Depends(get_db)):
+    """Sitting members of the Rajya Sabha (sansad.in)."""
+    R = models.RajyaSabhaMember
+    query = db.query(R)
+    if state:
+        query = query.filter(R.state == state)
+    if party_id:
+        query = query.filter(R.party_id == party_id)
+    if q:
+        query = query.filter(or_(R.name.ilike(f"%{q}%"), R.name_hi.ilike(f"%{q}%")))
+    if minister is not None:
+        query = query.filter(R.is_minister.is_(minister))
+    members = query.order_by(R.state, R.name).all()
+    by_party = Counter(m.party_name or "Unknown" for m in db.query(R))
+    return {"total": len(members), "data": [_rs_dict(m) for m in members],
+            "seats_by_party": [{"party": p, "members": n} for p, n in by_party.most_common()],
+            "source": "https://sansad.in/rs/members"}
+
+
+@app.get("/api/v1/rajya-sabha/{member_id}")
+def read_rajya_sabha_member(member_id: int, db: Session = Depends(get_db)):
+    m = db.get(models.RajyaSabhaMember, member_id)
+    if not m:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return _rs_dict(m)
 
 
 # --- Party profile: money in, representatives, affidavits, parliament ---
@@ -1117,6 +1157,8 @@ def read_party_profile(party_id: str, db: Session = Depends(get_db)):
 
     attendance, mp_rows = db.query(func.avg(models.MPActivity.attendance_pct), func.count(models.MPActivity.id))\
         .filter(models.MPActivity.party_name == party.name).one()
+    R = models.RajyaSabhaMember
+    rs_members = db.query(R).filter(R.party_id == party_id).order_by(R.state, R.name).all()
 
     return {
         "id": party.id,
@@ -1138,6 +1180,7 @@ def read_party_profile(party_id: str, db: Session = Depends(get_db)):
             "mlas": mla_count, "mlas_declaring_cases": int(mla_with_cases or 0),
             "by_state": [{"state": st, "election": e, "mlas": n} for st, e, n in mla_by_state],
         },
+        "rajya_sabha": {"members": len(rs_members), "list": [_rs_dict(m) for m in rs_members]},
         "parliament": {"mps_with_activity_data": mp_rows,
                        "avg_attendance_pct": round(float(attendance), 1) if attendance is not None else None},
         "notes": [
@@ -1310,7 +1353,7 @@ def _live_query(db, category=None, source=None, kind=None, ref=None, q=None, lan
 @app.get("/api/v1/live")
 def read_live(
     category: Optional[str] = Query(None), source: Optional[str] = Query(None),
-    kind: Optional[str] = Query(None, pattern="^(mp|party|purchaser|state)$"), ref: Optional[str] = Query(None),
+    kind: Optional[str] = Query(None, pattern="^(mp|rs|party|purchaser|state)$"), ref: Optional[str] = Query(None),
     q: Optional[str] = Query(None, max_length=100), language: Optional[str] = Query(None, max_length=5),
     before_id: Optional[int] = Query(None), limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -1332,7 +1375,7 @@ def read_live(
 def read_live_rss(
     request: Request,
     category: Optional[str] = Query(None), source: Optional[str] = Query(None),
-    kind: Optional[str] = Query(None, pattern="^(mp|party|purchaser|state)$"), ref: Optional[str] = Query(None),
+    kind: Optional[str] = Query(None, pattern="^(mp|rs|party|purchaser|state)$"), ref: Optional[str] = Query(None),
     q: Optional[str] = Query(None, max_length=100), language: Optional[str] = Query(None, max_length=5),
     db: Session = Depends(get_db),
 ):
@@ -1455,7 +1498,7 @@ def read_live_trending(hours: int = Query(24, ge=1, le=24 * 14), per_kind: int =
     n = func.count(func.distinct(M.item_id))
     rows = db.query(M.kind, M.ref, M.label, n).join(L, L.id == M.item_id).filter(L.published_at >= since)\
         .group_by(M.kind, M.ref, M.label).order_by(desc(n)).all()
-    out = {"mp": [], "party": [], "purchaser": [], "state": []}
+    out = {"mp": [], "rs": [], "party": [], "purchaser": [], "state": []}
     for kind, ref, label, count in rows:
         if len(out[kind]) < per_kind:
             out[kind].append({"ref": ref, "label": label, "headlines": count})
@@ -1545,6 +1588,13 @@ def search_everything(
         "total": mps.order_by(None).count(),
         "items": [{"id": m.id, "name": m.mp_name, "constituency": m.constituency, "state": m.state_represented,
                    "party": m.party_name} for m in mps.order_by(models.MPActivity.mp_name).limit(per_group)],
+    }
+
+    R = models.RajyaSabhaMember
+    rs = db.query(R).filter(or_(R.name.ilike(like), R.name_hi.ilike(like)))
+    out["rajya_sabha"] = {
+        "total": rs.order_by(None).count(),
+        "items": [_rs_dict(m) for m in rs.order_by(R.name).limit(per_group)],
     }
 
     questions = db.query(models.ParliamentQuestion).filter(models.ParliamentQuestion.title.ilike(like))
@@ -1761,6 +1811,17 @@ def read_data_quality(db: Session = Depends(get_db)):
             "rows": db.query(func.count(models.WeeklyBrief.id)).scalar(),
             "last_loaded": brief.created_at.isoformat() if brief else None,
             "metrics": [{"label": "Model", "value": brief_model or "—"}],
+        },
+        {
+            "id": "rajya_sabha", "label": "Rajya Sabha members",
+            "rows": db.query(func.count(models.RajyaSabhaMember.id)).scalar(),
+            "last_loaded": last_loaded(models.RajyaSabhaMember),
+            "metrics": [
+                {"label": "Not linked to a Raven party (nominated, independent, small parties)",
+                 "value": db.query(func.count(models.RajyaSabhaMember.id)).filter(models.RajyaSabhaMember.party_id.is_(None)).scalar()},
+                {"label": "Ministers", "value": db.query(func.count(models.RajyaSabhaMember.id))
+                    .filter(models.RajyaSabhaMember.is_minister.is_(True)).scalar()},
+            ],
         },
         {
             "id": "live", "label": "Live headlines",

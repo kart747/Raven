@@ -10,6 +10,7 @@ const GROUPS = [
   { key: 'candidates', label: 'Candidates & MLAs', icon: Award },
   { key: 'ngos', label: 'NGOs', icon: Building2 },
   { key: 'mps', label: 'Lok Sabha MPs', icon: UserCheck },
+  { key: 'rajya_sabha', label: 'Rajya Sabha members', icon: UserCheck },
   { key: 'questions', label: 'Lok Sabha questions', icon: MessageSquareText },
 ];
 
@@ -26,13 +27,14 @@ function describe(group, item) {
     case 'candidates': return { title: item.name, sub: `${item.constituency}, ${item.state} · ${item.election || ''}${item.is_winner ? ' · won' : ''}` };
     case 'ngos': return { title: item.name, sub: `${item.state} · FCRA ${item.fcra_registration_number}` };
     case 'mps': return { title: item.name, sub: `${item.constituency}, ${item.state} · ${item.party}` };
+    case 'rajya_sabha': return { title: item.name, sub: `${item.state} · ${item.party || 'No party'}${item.is_minister ? ' · Minister' : ''}` };
     case 'questions': return { title: item.title, sub: `${item.date} · ${item.representative}`, href: item.official_url };
     default: return { title: '' };
   }
 }
 
 /** Search across every dataset. Opens with the header button or the "/" key. */
-export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty, onOpenMp, onOpenCandidate }) {
+export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty, onOpenMp, onOpenRs, onOpenCandidate }) {
   const t = useT();
   const [q, setQ] = useState('');
   const input = useRef(null);
@@ -52,6 +54,7 @@ export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, o
     else if (group === 'purchasers') onOpenDonor(item.id);
     else if (group === 'ngos') onOpenNgo(item.id);
     else if (group === 'mps') onOpenMp(item.id);
+    else if (group === 'rajya_sabha') onOpenRs(item.id);
     else if (group === 'candidates') onOpenCandidate(item.id);
     else return; // candidates and questions are links to the source
     onClose();

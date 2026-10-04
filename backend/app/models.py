@@ -276,6 +276,25 @@ class MemberTerm(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
+class RajyaSabhaMember(Base):
+    """A sitting member of the Rajya Sabha, from sansad.in. Contact details are not stored."""
+    __tablename__ = "rajya_sabha_members"
+
+    id = Column(Integer, primary_key=True)                     # sansad.in member number (mpsno)
+    name = Column(String, nullable=False, index=True)          # "Nirmala Sitharaman"
+    name_on_record = Column(String, nullable=False)            # "Sitharaman, Smt. Nirmala"
+    name_hi = Column(String, nullable=True)                    # Hindi name from the same record
+    party_name = Column(String, nullable=True)
+    party_id = Column(String, nullable=True, index=True)       # Raven party id; null for nominated / independent
+    state = Column(String, nullable=False, index=True)         # canonical state, or "Nominated"
+    term_start = Column(String, nullable=True)                 # ISO date
+    term_end = Column(String, nullable=True)
+    terms_served = Column(Integer, nullable=True)
+    is_minister = Column(Boolean, nullable=True)
+    source_url = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
 class LiveSource(Base):
     """A live feed Raven polls, with its health."""
     __tablename__ = "live_sources"

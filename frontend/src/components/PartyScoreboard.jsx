@@ -8,6 +8,7 @@ const COLUMNS = [
   { key: 'party', label: 'Party', align: 'left' },
   { key: 'bonds_amount', label: 'Electoral bonds received', fmt: (v) => (v ? formatCrore(v, 0) : '—') },
   { key: 'mps_2024', label: 'MPs won 2024' },
+  { key: 'rajya_sabha', label: 'Rajya Sabha members' },
   { key: 'ls_candidates', label: 'LS 2024 candidates' },
   { key: 'ls_candidates_with_cases_pct', label: 'Candidates declaring cases', fmt: (v) => (v == null ? '—' : `${v}%`) },
   { key: 'avg_mp_assets', label: 'Avg MP assets', fmt: (v) => (v ? formatCrore(v, 1) : '—') },

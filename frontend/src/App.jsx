@@ -20,6 +20,8 @@ const BriefViewer = lazy(() => import('./components/BriefViewer'));
 const DonorProfile = lazy(() => import('./components/DonorProfile'));
 const PartyProfile = lazy(() => import('./components/PartyProfile'));
 const MpProfile = lazy(() => import('./components/MpProfile'));
+const RajyaSabhaProfile = lazy(() => import('./components/RajyaSabhaProfile'));
+const RajyaSabhaMembers = lazy(() => import('./components/RajyaSabhaMembers'));
 const NgoDetailModal = lazy(() => import('./components/ngos/NgoDetailModal'));
 const SearchPalette = lazy(() => import('./components/SearchPalette'));
 const SeatMap = lazy(() => import('./components/SeatMap'));
@@ -62,6 +64,7 @@ export default function App() {
   const partyId = hash.party || null;
   const mpId = hash.mp ? Number(hash.mp) : null;
   const candidateId = hash.cand ? Number(hash.cand) : null;
+  const rsId = hash.rs ? Number(hash.rs) : null;
   const setActiveTab = (tab) => setHash({ tab: tab === 'dashboard' ? null : tab });
   const setSelectedState = (state) => setHash({ state });
   const setDonorId = (id) => setHash({ donor: id });
@@ -69,9 +72,11 @@ export default function App() {
   const setPartyId = (id) => setHash({ party: id });
   const setMpId = (id) => setHash({ mp: id });
   const setCandidateId = (id) => setHash({ cand: id });
+  const setRsId = (id) => setHash({ rs: id });
   // Live headline tags -> the matching profile
   const openEntity = ({ kind, ref }) => {
     if (kind === 'mp') setMpId(Number(ref));
+    else if (kind === 'rs') setRsId(Number(ref));
     else if (kind === 'party') setPartyId(ref);
     else if (kind === 'purchaser') setDonorId(Number(ref));
     else if (kind === 'state') setHash({ tab: null, state: ref });
@@ -191,7 +196,8 @@ export default function App() {
                 )}
               </div>
               <div className="lg:col-span-5">
-                <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} onOpenMp={setMpId} onOpenCandidate={setCandidateId} />
+                <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} onOpenMp={setMpId} onOpenCandidate={setCandidateId}
+                  onOpenRs={setRsId} />
               </div>
             </div>
           </div>
@@ -208,7 +214,12 @@ export default function App() {
           </div>
         )}
         {activeTab === 'ngos' && <NgosTracker onOpenNgo={setNgoId} />}
-        {activeTab === 'legislative' && <LegislativeTracker onOpenMp={setMpId} />}
+        {activeTab === 'legislative' && (
+          <div className="flex flex-col gap-6">
+            <LegislativeTracker onOpenMp={setMpId} />
+            <RajyaSabhaMembers onOpenMember={setRsId} onOpenParty={setPartyId} />
+          </div>
+        )}
         {activeTab === 'brief' && <BriefViewer />}
         {activeTab === 'sources' && <Sources />}
         </Suspense>
@@ -217,11 +228,13 @@ export default function App() {
       <Suspense fallback={null}>
       {donorId != null && <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} onOpenParty={(id) => setHash({ donor: null, party: id })} />}
       {partyId && <PartyProfile partyId={partyId} onClose={() => setPartyId(null)} onOpenDonor={(id) => setHash({ party: null, donor: id })}
+        onOpenRs={(id) => setHash({ party: null, rs: id })}
         onOpenCandidate={(id) => setHash({ party: null, cand: id })} />}
       {ngoId != null && <NgoDetailModal ngoId={ngoId} onClose={() => setNgoId(null)} />}
       {candidateId != null && <CandidateProfile candidateId={candidateId} onClose={() => setCandidateId(null)}
         onOpenParty={(id) => setHash({ cand: null, party: id })} onOpenMp={(id) => setHash({ cand: null, mp: id })} onOpenCandidate={setCandidateId} />}
       {mpId != null && <MpProfile mpId={mpId} onClose={() => setMpId(null)} onOpenParty={(id) => setHash({ mp: null, party: id })} />}
+      {rsId != null && <RajyaSabhaProfile memberId={rsId} onClose={() => setRsId(null)} onOpenParty={(id) => setHash({ rs: null, party: id })} />}
       {searchOpen && (
         <SearchPalette
           open={searchOpen}
@@ -230,6 +243,7 @@ export default function App() {
           onOpenNgo={setNgoId}
           onOpenState={(state) => setHash({ tab: null, state })}
           onOpenMp={setMpId}
+          onOpenRs={setRsId}
           onOpenParty={setPartyId}
           onOpenCandidate={setCandidateId}
         />

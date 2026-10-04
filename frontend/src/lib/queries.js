@@ -112,6 +112,12 @@ export const useCandidateParties = (params) =>
 export const useInsights = (lang = 'en') =>
   useQuery({ queryKey: ['insights', lang], queryFn: () => apiGet('/api/v1/insights', { lang }) });
 
+export const useRajyaSabha = () =>
+  useQuery({ queryKey: ['rajya-sabha'], queryFn: () => apiGet('/api/v1/rajya-sabha') });
+
+export const useRajyaSabhaMember = (id) =>
+  useQuery({ queryKey: ['rajya-sabha', id], queryFn: () => apiGet(`/api/v1/rajya-sabha/${id}`), enabled: id != null });
+
 export const useMpProfile = (id) =>
   useQuery({ queryKey: ['mp', id], queryFn: () => apiGet(`/api/v1/mps/${id}/profile`), enabled: id != null });
 

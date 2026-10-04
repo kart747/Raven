@@ -14,7 +14,7 @@ from .. import models
 from ..import_member_terms import name_tokens
 from ..import_questions import distinctive_name
 from ..states import CANONICAL_STATES
-from .aliases import MP_ALIASES, PARTY_ALIASES, STATE_ALIASES, STATE_DEMONYM_VOWELS
+from .aliases import MP_ALIASES, PARTY_ALIASES, RS_ALIASES, STATE_ALIASES, STATE_DEMONYM_VOWELS
 
 # Spelling variants that should compare equal: nukta (ड़/ड), chandrabindu (गाँधी/गांधी), zero-width joiners,
 # and Malayalam chillu letters (ൺ) versus the older consonant + virama spelling (ണ്)
@@ -32,8 +32,9 @@ def normalise(text: str) -> str:
 
 
 class Tagger:
-    def __init__(self, parties=(), mps=(), donors=(), states=CANONICAL_STATES):
-        """parties: ids; mps: (id, name); donors: (id, name); states: canonical names."""
+    def __init__(self, parties=(), mps=(), donors=(), states=CANONICAL_STATES, rs=()):
+        """parties: ids; mps: (id, name); donors: (id, name); states: canonical names;
+        rs: Rajya Sabha members (id, name, Hindi name)."""
         self.exact: dict[str, list[tuple[str, str, str]]] = {}
         self.stems: dict[str, list[tuple[str, str, str]]] = {}
         party_ids = set(parties)
@@ -43,16 +44,28 @@ class Tagger:
             elif pid in party_ids:
                 self._add(alias, ("party", pid, pid))
 
-        mps = list(mps)
+        mps, rs = list(mps), list(rs)
+        # A name is used only if no other member of either House has the same significant words
         keys = Counter(" ".join(sorted(name_tokens(n))) for _, n in mps)
-        for mp_id, name in mps:
+        keys.update(" ".join(sorted(name_tokens(n))) for _, n, _ in rs)
+        members = [("mp", i, n) for i, n in mps] + [("rs", i, n) for i, n, _ in rs]
+        for kind, member_id, name in members:
             tokens = [w for w in re.findall(r"[a-z]+", name.lower()) if w in name_tokens(name)]
             if len(tokens) >= 2 and keys[" ".join(sorted(name_tokens(name)))] == 1:
-                self._add(" ".join(tokens), ("mp", str(mp_id), name))
+                self._add(" ".join(tokens), (kind, str(member_id), name))
         by_name = {n: i for i, n in mps}
         for alias, name in MP_ALIASES.items():
             if name in by_name:
                 self._add(alias, ("mp", str(by_name[name]), name))
+        hindi = Counter(normalise(h).strip() for _, _, h in rs if h)
+        for rs_id, name, name_hi in rs:
+            key = normalise(name_hi).strip() if name_hi else ""
+            if len(key.split()) >= 2 and hindi[key] == 1:
+                self._add(name_hi + "*", ("rs", str(rs_id), name))   # Hindi name exactly as on the record
+        rs_by_name = {n: i for i, n, _ in rs}
+        for alias, name in RS_ALIASES.items():
+            if name in rs_by_name:
+                self._add(alias, ("rs", str(rs_by_name[name]), name))
 
         for donor_id, name in donors:
             core = distinctive_name(name)
@@ -76,7 +89,9 @@ class Tagger:
     def from_db(cls, db) -> "Tagger":
         return cls(parties=[p for (p,) in db.query(models.Party.id)],
                    mps=list(db.query(models.MPActivity.id, models.MPActivity.mp_name)),
-                   donors=list(db.query(models.Donor.id, models.Donor.name)))
+                   donors=list(db.query(models.Donor.id, models.Donor.name)),
+                   rs=list(db.query(models.RajyaSabhaMember.id, models.RajyaSabhaMember.name,
+                                    models.RajyaSabhaMember.name_hi)))
 
     def _add(self, phrase: str, entity: tuple[str, str, str] | None) -> None:
         stem = phrase.endswith("*")

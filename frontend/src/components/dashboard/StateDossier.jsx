@@ -12,7 +12,7 @@ const TABS = [
   { id: 'news', label: 'state.tab.news', source: 'Source: live headlines from public feeds that name the state' },
 ];
 
-export default function StateDossier({ state, candidateSummary, onOpenMp, onOpenCandidate }) {
+export default function StateDossier({ state, candidateSummary, onOpenMp, onOpenCandidate, onOpenRs }) {
   const t = useT();
   const tr = t;
   const [tab, setTab] = useState('candidates');
@@ -40,7 +40,7 @@ export default function StateDossier({ state, candidateSummary, onOpenMp, onOpen
           : tab === 'mlas' ? <CandidatesPanel state={state} summary={mlaSummary[state]} house="Vidhan Sabha" noun="Sitting MLAs" onOpenCandidate={onOpenCandidate} />
           : tab === 'ngos' ? <NgoPanel state={state} />
             : tab === 'news' ? <InTheNews kind="state" refId={state} title="Latest headlines" />
-              : <LegislativePanel state={state} onOpenMp={onOpenMp} />
+              : <LegislativePanel state={state} onOpenMp={onOpenMp} onOpenRs={onOpenRs} />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-800 rounded-2xl bg-slate-950/30 px-6 py-10">
           <h3 className="text-sm font-bold text-slate-200">{t('state.empty.title')}</h3>

@@ -1,5 +1,6 @@
 const STYLE = {
   mp: 'border-rose-800/50 text-rose-300',
+  rs: 'border-fuchsia-800/50 text-fuchsia-300',
   party: 'border-amber-800/50 text-amber-300',
   purchaser: 'border-cyan-800/50 text-cyan-300',
   state: 'border-slate-700 text-slate-300',

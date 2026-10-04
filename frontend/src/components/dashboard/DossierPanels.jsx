@@ -1,5 +1,5 @@
 import { formatCrore } from '../../lib/format';
-import { useStateCandidates, useStateLegislative, useStateNgoSummary } from '../../lib/queries';
+import { useRajyaSabha, useStateCandidates, useStateLegislative, useStateNgoSummary } from '../../lib/queries';
 import { STATUS_COLORS, statusLabel } from '../ngos/constants';
 import Spinner from '../ui/Spinner';
 
@@ -110,15 +110,18 @@ const BILL_COLORS = {
   Pending: 'bg-amber-950/60 border-amber-800/40 text-amber-400',
 };
 
-export function LegislativePanel({ state, onOpenMp }) {
+export function LegislativePanel({ state, onOpenMp, onOpenRs }) {
   const { data: s, isLoading, isError } = useStateLegislative(state);
+  const { data: rs } = useRajyaSabha();
+  const rsMembers = (rs?.data || []).filter((m) => m.state === state);
   if (isLoading) return <Loading label="Loading parliamentary activity..." />;
   if (isError || !s) return <Failed />;
 
   return (
     <div className="flex flex-col gap-4 flex-1">
       <div className={STATS}>
-        <Stat label="MPs" value={s.total_mps} />
+        <Stat label="Lok Sabha MPs" value={s.total_mps} />
+        <Stat label="Rajya Sabha" value={rsMembers.length} />
         <Stat label="Private member bills" value={s.total_bills} tone="text-cyan-400" />
       </div>
       <div>
@@ -138,6 +141,21 @@ export function LegislativePanel({ state, onOpenMp }) {
           ))}
         </div>
       </div>
+      {rsMembers.length > 0 && (
+        <div>
+          <h3 className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Rajya Sabha members</h3>
+          <div className={LIST}>
+            {rsMembers.map((m) => (
+              <div key={m.id} className={ROW}>
+                <button onClick={() => onOpenRs?.(m.id)} className="text-white hover:text-cyan-400 font-bold truncate max-w-[200px] text-left" title={m.name}>
+                  {m.name}{m.is_minister ? ' · Minister' : ''}
+                </button>
+                <span className="text-[9px] text-slate-500 flex-shrink-0">{m.party_id || m.party} · until {m.term_end?.slice(0, 4)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div>
         <h3 className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Private member bills</h3>
         <div className={LIST}>

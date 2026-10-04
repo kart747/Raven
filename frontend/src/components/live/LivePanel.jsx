@@ -17,7 +17,7 @@ const LANGUAGES = [
   ['', 'All'], ['hi', 'हिन्दी'], ['mr', 'मराठी'], ['gu', 'ગુજરાતી'], ['pa', 'ਪੰਜਾਬੀ'], ['bn', 'বাংলা'],
   ['ta', 'தமிழ்'], ['te', 'తెలుగు'], ['kn', 'ಕನ್ನಡ'], ['ml', 'മലയാളം'],
 ];
-const KIND_LABEL = { mp: 'MPs', party: 'Parties', purchaser: 'Bond purchasers', state: 'States' };
+const KIND_LABEL = { mp: 'Lok Sabha MPs', rs: 'Rajya Sabha members', party: 'Parties', purchaser: 'Bond purchasers', state: 'States' };
 
 /** Headlines from public feeds as they arrive, linked to Raven's people, parties, companies and states. */
 export default function LivePanel({ onOpenEntity, compact = false }) {

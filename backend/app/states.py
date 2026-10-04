@@ -12,6 +12,8 @@ CANONICAL_STATES = [
 _ALIASES = {
     "NEW DELHI": "Delhi",
     "NCT OF DELHI": "Delhi",
+    "NATIONAL CAPITAL TERRITORY OF DELHI": "Delhi",
+    "KERALAM": "Kerala",   # official name since 2026; Raven keeps "Kerala" so older datasets still join
     "DELHI (NCT)": "Delhi",
     "TAMILNADU": "Tamil Nadu",
     "WESTBENGAL": "West Bengal",

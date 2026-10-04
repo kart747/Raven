@@ -174,7 +174,7 @@ paths = ["/api/v1/parties", "/api/v1/parties/scoreboard", "/api/v1/donations", "
          "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows", "/api/v1/seats/lok-sabha-2024", "/api/v1/asset-growth",
          "/api/v1/search?q=ab", "/api/v1/insights", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources",
          "/api/v1/live", "/api/v1/live/sources", "/api/v1/live/trending", "/api/v1/live/states",
-         "/api/v1/live/rss", "/api/v1/live/rss?kind=party&ref=BJP"]
+         "/api/v1/live/rss", "/api/v1/live/rss?kind=party&ref=BJP", "/api/v1/rajya-sabha"]
 with TestClient(app) as client:
     bad = [(p, client.get(p).status_code) for p in paths]
     bad = [b for b in bad if b[1] != 200]
@@ -249,6 +249,8 @@ db.add(m.MPActivity(mp_name="New Member", constituency="Kurnoolu", party_name="A
                     bills_introduced=0, official_url="t"))
 db.add(m.ParliamentQuestion(lok_sabha=18, date="2024-12-01", title="Acme Industries contracts", question_type="Unstarred",
                             ministry="Mines", representative="New Member", official_url="t", source_url="t"))
+db.add(m.RajyaSabhaMember(id=77, name="Rita Rao", name_on_record="Rao, Smt. Rita", party_id="AAA", party_name="Alpha Party",
+                          state="Kerala", is_minister=True, source_url="t"))
 db.add(m.LiveSource(key="feed", name="A Feed", category="politics", url="t", homepage="t"))
 # Collected out of order: id 3 was published first, so it lists last and is not "new" to the stream
 for i, (title, mins) in enumerate([("Alpha Party wins", 5), ("Asha Rao speaks", 1), ("Old story", 120)], start=1):
@@ -290,6 +292,11 @@ with TestClient(app_module.app) as c:
     assert [i["id"] for i in live["data"]] == [2, 1, 3] and live["latest_id"] == 3   # time order; stream resumes after 3
     assert [i["id"] for i in c.get("/api/v1/live?before_id=1").json()["data"]] == [3]  # paging follows the same order
     assert [i["id"] for i in c.get("/api/v1/live?kind=party&ref=AAA").json()["data"]] == [2, 1]
+    rs = c.get("/api/v1/rajya-sabha?state=Kerala").json()
+    assert rs["total"] == 1 and rs["data"][0]["name"] == "Rita Rao" and c.get("/api/v1/rajya-sabha/77").json()["is_minister"]
+    assert party["rajya_sabha"]["members"] == 1
+    assert {r["party_id"]: r["rajya_sabha"] for r in c.get("/api/v1/parties/scoreboard").json()}["AAA"] == 1
+    assert c.get("/api/v1/search?q=rita").json()["rajya_sabha"]["total"] == 1
     rss = c.get("/api/v1/live/rss?kind=party&ref=AAA").text
     assert rss.count("<item>") == 2 and "naming Alpha Party" in rss and "https://x.in/2" in rss
     trend = c.get("/api/v1/live/trending").json()
@@ -457,3 +464,38 @@ def test_live_stories_group_one_story_across_outlets_but_not_shared_words():
     assert frozenset({7, 8}) in groups                 # Hindi headlines group among themselves...
     assert frozenset({9}) in groups                    # ...and not with English ones
     assert frozenset({3}) in groups and frozenset({4}) in groups   # sharing only "murder" is not a story
+
+
+def test_rajya_sabha_records_keep_public_office_facts_only():
+    from app.import_rajya_sabha import display_name, display_name_hi, parse
+    assert display_name("Sitharaman, Smt. Nirmala") == "Nirmala Sitharaman"
+    assert display_name("Abdul Wahab, Shri ") == "Abdul Wahab" and display_name("Shri Harivansh") == "Harivansh"
+    assert display_name("Agrawal, Dr. Radha Mohan Das") == "Radha Mohan Das Agrawal"
+    assert display_name_hi("अग्रवाल, डा. राधा मोहन दास") == "राधा मोहन दास अग्रवाल"
+    base = {"party": "", "state": "Bihar ", "notificationDate": "05/07/2022", "expirationDate": "04/07/2028",
+            "termCount": 1, "currentMinister": False, "hname": None, "localAdd": "12 Some Road", "localTele": "98xxxx"}
+    rows = parse([
+        {**base, "mpsno": 1, "name": "Kumar, Shri Ram", "partyCode": "JD(U)", "status": "Sitting"},
+        {**base, "mpsno": 2, "name": "Usha, Smt. P. T.", "partyCode": "NOM.", "state": "Nominated", "status": "Sitting"},
+        {**base, "mpsno": 3, "name": "Old, Shri Member", "partyCode": "BJP", "status": "Retirement"},
+        {**base, "mpsno": 4, "name": "Rao, Shri A", "partyCode": "BJP", "state": "Keralam", "status": "Sitting"},
+    ], party_ids={"JDU", "BJP"})
+    assert [r["id"] for r in rows] == [1, 2, 4]                                   # sitting members only
+    assert rows[0]["party_id"] == "JDU" and rows[0]["term_start"] == "2022-07-05"  # sansad.in code mapped
+    assert rows[1]["party_id"] is None and rows[1]["state"] == "Nominated"
+    assert rows[2]["state"] == "Kerala"                                          # Keralam is Kerala
+    assert not any(k in r for r in rows for k in ("localAdd", "localTele", "emailID"))   # no contact details
+
+
+def test_live_tagger_names_rajya_sabha_members():
+    from app.live.tagger import Tagger
+    t = Tagger(parties=["BJP"], mps=[(1, "Narendra Modi")],
+               rs=[(10, "Nirmala Sitharaman", "निर्मला सीतारमण"), (11, "S. Jaishankar", "एस. जयशंकर"),
+                   (12, "Mallikarjun Kharge", "मल्लिकार्जुन खरगे")], states=["Kerala"])
+    tags = lambda s: {(k, r) for k, r, _ in t.tag(s)}  # noqa: E731
+    assert tags("Nirmala Sitharaman presents GST changes") == {("rs", "10")}
+    assert tags("EAM Jaishankar meets Rubio; PM Modi to visit") == {("rs", "11"), ("mp", "1")}
+    assert tags("निर्मला सीतारमण ने कहा") == {("rs", "10")}
+    assert tags("मल्लिकार्जुन खड़गे का बयान") == tags("मल्लिकार्जुन खरगे का बयान") == {("rs", "12")}
+    assert tags("Keralam orders probe") == {("state", "Kerala")}
+    assert tags("Jaishankar Road traffic") == set()         # a single surname is not enough

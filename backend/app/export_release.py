@@ -36,6 +36,7 @@ PUBLISHED = {
     "question_mentions": "Raven exact-name matches of purchasers in question titles",
     "entity_events": "Curated, source-cited events (data/entity_events.csv)",
     "member_terms": "Vonter/india-representatives-activity (ODbL-1.0): Lok Sabha members, 15th-18th",
+    "rajya_sabha_members": "sansad.in Rajya Sabha member list: sitting members (contact details not stored)",
     "asset_comparisons": "MyNeta / ADR re-contest asset comparison (Lok Sabha 2019 vs 2024 affidavits)",
 }
 

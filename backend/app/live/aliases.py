@@ -117,8 +117,22 @@ MP_ALIASES = {
     "അമിത് ഷാ*": "Amit Shah", "ശശി തരൂർ*": "Shashi Tharoor", "പ്രിയങ്ക ഗാന്ധി*": "Priyanka Gandhi Vadra",
 }
 
+# How headlines refer to Rajya Sabha members -> the member's name as Raven displays it from sansad.in.
+# Full names ("Nirmala Sitharaman") and the Hindi names on the record are matched without being listed here.
+RS_ALIASES = {
+    "s jaishankar": "S. Jaishankar", "eam jaishankar": "S. Jaishankar", "एस जयशंकर*": "S. Jaishankar",
+    "विदेश मंत्री जयशंकर*": "S. Jaishankar",
+    "jp nadda": "Jagat Prakash Nadda", "j p nadda": "Jagat Prakash Nadda", "जेपी नड्डा*": "Jagat Prakash Nadda",
+    "fm sitharaman": "Nirmala Sitharaman",
+    "मल्लिकार्जुन खड़गे*": "Mallikarjun Kharge",
+    "l murugan": "L. Murugan", "bl verma": "B.L. Verma", "b l verma": "B.L. Verma",
+    "pt usha": "P. T. Usha", "p t usha": "P. T. Usha",
+    "ramdas athawale": "Ramdas Bandu Athawale", "रामदास आठवले*": "Ramdas Bandu Athawale",
+}
+
 # States in Indian languages (English names come from the canonical list)
 STATE_ALIASES = {
+    "keralam": "Kerala",   # Kerala's official name since 2026
     # Hindi / Marathi
     "उत्तर प्रदेश*": "Uttar Pradesh", "यूपी": "Uttar Pradesh", "महाराष्ट्र*": "Maharashtra", "बिहार*": "Bihar",
     "पश्चिम बंगाल*": "West Bengal", "मध्य प्रदेश*": "Madhya Pradesh", "मध्यप्रदेश*": "Madhya Pradesh",

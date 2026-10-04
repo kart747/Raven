@@ -45,6 +45,7 @@ back to the original source on every record.
 | **State map** | Five layers (candidate assets, candidates declaring cases, MLAs declaring cases, NGO foreign funding, headlines in the last 24 hours). Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
 | **Candidate & MLA profiles** | Every candidate and sitting MLA: affidavit, change since their previous affidavit, everyone else who stood in the seat, and a link to the Parliament record for MPs. |
+| **Rajya Sabha** | All 243 sitting members from sansad.in (party, state, term, ministers), on party profiles, the scoreboard, state panels and search, each with a profile and "In the news". Contact details in the source are not stored. |
 | **MP profiles** | Each Lok Sabha MP's 2024 affidavit next to their parliamentary record across terms (15th-18th Lok Sabha, linked only when seat, state and name all match): attendance, debates, questions by ministry, bills. |
 | **Party scoreboard** | Every party side by side: bonds received, MPs won in 2024, sitting MLAs, share of candidates and MLAs declaring cases, average MP assets. Sortable. |
 | **Party profiles** | For each party: bonds received by year and top purchasers, MPs won in 2024, sitting MLAs by state, share of candidates declaring cases, and MP attendance. |
@@ -62,6 +63,7 @@ back to the original source on every record.
 | Candidate affidavits (Lok Sabha 2024 and all 31 state/UT assemblies) | [MyNeta](https://myneta.info/) (ADR) | Scraped, rate-limited, cached |
 | MP activity, bills & questions (ODbL-1.0) | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity), from sansad.in | Downloaded on import |
 | Live headlines | 55 publishers' own RSS feeds (PIB, RBI, SEBI, national and state papers, Bar & Bench, fact-checkers, BBC Indian-language services, Amar Ujala, Sakal, Dinamani, Sakshi, Prajavani, Mathrubhumi and more) and the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/); full list in [`backend/app/live/sources.py`](backend/app/live/sources.py) | Polled (robots.txt honoured, conditional requests, one request at a time per publisher, back-off). Only headline, link and time are stored; kept 60 days |
+| Rajya Sabha members | [sansad.in](https://sansad.in/rs/members) member list (sitting members) | Fetched on import (`ingest-rajya-sabha`); addresses and phone numbers are dropped |
 | Lok Sabha seat boundaries | [DataMeet `india_pc_2019_simplified`](https://github.com/datameet/maps/tree/master/parliamentary-constituencies) (CC0), 2008 delimitation; Assam and J&K seats were redrawn later and are flagged | Bundled (`frontend/public/india-pc.geojson`, rebuilt with `python -m app.cli build-seat-map`) |
 | State boundaries (map) | [DataMeet `States/Admin2`](https://github.com/datameet/maps/tree/master/States) (MIT), updated to the Survey of India map incl. Ladakh and J&K | Bundled (`frontend/public/india.geojson`) |
 | Optional: FCRA status, purchaser industry and events | Your own sourced CSVs, see [data/README.md](data/README.md) | `data/*.csv` |
@@ -103,6 +105,7 @@ python -m app.cli ingest-fcra         # NGO foreign contributions
 python -m app.cli ingest-candidates   # Lok Sabha 2024 affidavits (slow first run, cached after)
 python -m app.cli ingest-assemblies   # sitting MLAs from each state's latest assembly election
 python -m app.cli ingest-legislative  # Lok Sabha activity and bills
+python -m app.cli ingest-rajya-sabha  # sitting Rajya Sabha members (sansad.in)
 python -m app.cli ingest-questions    # Lok Sabha questions since 2009 + purchaser name matches
 python -m app.cli ingest-events       # sourced purchaser events
 python -m app.cli brief               # regenerate the AI brief
