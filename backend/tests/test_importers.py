@@ -136,3 +136,16 @@ def test_myneta_prefers_the_elections_own_candidate_link():
     [row] = parse_summary_page(html, base_url=election_url("Karnataka2023"), slug="Karnataka2023")
     assert row["source_url"] == "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7087"
     assert row["name"] == "M.Y.Patil" and row["constituency"] == "Afzalpur" and row["assets"] == 46932109
+
+
+def test_question_mentions_are_conservative():
+    from app.import_questions import distinctive_name, find_mentions
+    assert distinctive_name("VEDANTA LIMITED") is None  # single word core: too ambiguous
+    assert distinctive_name("MEGHA ENGINEERING AND INFRASTRUCTURES LIMITED") == "MEGHA ENGINEERING AND INFRASTRUCTURES"
+    assert distinctive_name("FUTURE GAMING AND HOTEL SERVICES PR") is None  # no legal form, could be truncated
+    assert distinctive_name("LAKSHMI NIWAS MITTAL") is None  # individuals are never matched
+    assert distinctive_name("INDIA POWER LIMITED") is None  # generic words only
+    titles = {1: "Contracts awarded to Megha Engineering and Infrastructures",
+              2: "Megha rainfall in Engineering colleges"}
+    assert find_mentions(titles, ["MEGHA ENGINEERING AND INFRASTRUCTURES LIMITED"]) == [
+        (1, "MEGHA ENGINEERING AND INFRASTRUCTURES LIMITED", "MEGHA ENGINEERING AND INFRASTRUCTURES")]

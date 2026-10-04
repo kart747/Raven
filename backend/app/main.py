@@ -696,6 +696,10 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
         .filter(models.DonorAlias.donor_id == donor_id).order_by(desc(models.DonorAlias.bond_count)).all()
     events = db.query(models.EntityEvent).filter(models.EntityEvent.donor_id == donor_id)\
         .order_by(models.EntityEvent.event_date).all()
+    named_in = db.query(models.ParliamentQuestion, models.QuestionMention.matched_text)\
+        .join(models.QuestionMention, models.QuestionMention.question_id == models.ParliamentQuestion.id)\
+        .filter(models.QuestionMention.donor_name == donor.name)\
+        .order_by(desc(models.ParliamentQuestion.date)).limit(100).all()
 
     return {
         "id": donor.id,
@@ -718,9 +722,85 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
             }
             for e in events
         ],
+        "questions_naming": [{**_question_dict(q), "matched_text": t} for q, t in named_in],
         "note": "Dates are encashment dates. Events are loaded from a sourced CSV and shown for "
                 "reference only; a date overlap is not evidence of a connection.",
     }
+
+
+# --- Lok Sabha questions ---
+QUESTION_CSV_COLUMNS = [
+    ("Lok Sabha", "lok_sabha"), ("Date", "date"), ("Title", "title"), ("Type", "question_type"),
+    ("Ministry", "ministry"), ("Asked by", "representative"), ("Official answer (PDF)", "official_url"),
+]
+
+
+def _question_dict(q):
+    return {
+        "id": q.id, "lok_sabha": q.lok_sabha, "date": q.date, "title": q.title,
+        "question_type": q.question_type, "ministry": q.ministry,
+        "representative": q.representative, "official_url": q.official_url,
+    }
+
+
+@app.get("/api/v1/questions")
+def read_questions(
+    search: Optional[str] = Query(None, description="Words in the question title"),
+    ministry: Optional[str] = Query(None),
+    representative: Optional[str] = Query(None, description="Member name (partial match)"),
+    lok_sabha: Optional[int] = Query(None, ge=15, le=18),
+    donor_name: Optional[str] = Query(None, description="Questions whose title names this bond purchaser"),
+    limit: int = Query(50, ge=1, le=MAX_PAGE),
+    offset: int = Query(0, ge=0),
+    export_csv: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """Lok Sabha questions (15th-18th), newest first, each linked to its official answer."""
+    Q = models.ParliamentQuestion
+    q = db.query(Q)
+    if search:
+        for word in search.split()[:6]:
+            q = q.filter(Q.title.ilike(f"%{word}%"))
+    if ministry:
+        q = q.filter(Q.ministry == ministry)
+    if representative:
+        q = q.filter(Q.representative.ilike(f"%{representative}%"))
+    if lok_sabha:
+        q = q.filter(Q.lok_sabha == lok_sabha)
+    if donor_name:
+        q = q.join(models.QuestionMention, models.QuestionMention.question_id == Q.id)\
+             .filter(models.QuestionMention.donor_name == donor_name)
+    total = q.order_by(None).with_entities(func.count(Q.id)).scalar()
+    ordered = q.order_by(desc(Q.date), Q.id)
+    if export_csv:
+        rows = (_question_dict(x) for x in ordered.limit(MAX_EXPORT_ROWS).yield_per(5000))
+        return csv_response(rows, QUESTION_CSV_COLUMNS, "raven_lok_sabha_questions.csv")
+    return paged([_question_dict(x) for x in ordered.offset(offset).limit(limit)], total, limit, offset)
+
+
+@app.get("/api/v1/questions/stats")
+def read_question_stats(lok_sabha: Optional[int] = Query(None, ge=15, le=18), db: Session = Depends(get_db)):
+    Q = models.ParliamentQuestion
+    flt = [Q.lok_sabha == lok_sabha] if lok_sabha else []
+    n = func.count(Q.id)
+    year = func.substr(Q.date, 1, 4)
+    return {
+        "total": db.query(n).filter(*flt).scalar(),
+        "date_range": db.query(func.min(Q.date), func.max(Q.date)).filter(*flt).one(),
+        "by_ministry": [{"ministry": m, "count": c} for m, c in
+                        db.query(Q.ministry, n).filter(*flt).group_by(Q.ministry).order_by(desc(n)).limit(15)],
+        "by_year": [{"year": y, "count": c} for y, c in
+                    db.query(year, n).filter(*flt).group_by(year).order_by(year)],
+        "top_askers": [{"representative": r, "count": c} for r, c in
+                       db.query(Q.representative, n).filter(*flt).group_by(Q.representative).order_by(desc(n)).limit(10)],
+        "purchasers_named": db.query(func.count(func.distinct(models.QuestionMention.donor_name))).scalar(),
+    }
+
+
+@app.get("/api/v1/questions/ministries")
+def read_question_ministries(db: Session = Depends(get_db)):
+    Q = models.ParliamentQuestion
+    return [m for (m,) in db.query(Q.ministry).filter(Q.ministry.isnot(None)).distinct().order_by(Q.ministry)]
 
 
 # --- Data quality: coverage and freshness of every dataset ---
@@ -820,6 +900,17 @@ def read_data_quality(db: Session = Depends(get_db)):
                 {"label": "MPs without attendance data", "value": mps_no_attendance},
                 {"label": "Private member bills", "value": bills},
                 {"label": "Bills with no state", "value": bills_no_state},
+            ],
+        },
+        {
+            "id": "questions", "label": "Lok Sabha questions (15th-18th)",
+            "rows": db.query(func.count(models.ParliamentQuestion.id)).scalar(),
+            "last_loaded": last_loaded(models.ParliamentQuestion),
+            "metrics": [
+                {"label": "Date range", "value": " – ".join(d for d in db.query(
+                    func.min(models.ParliamentQuestion.date), func.max(models.ParliamentQuestion.date)).one() if d) or "—"},
+                {"label": "Bond purchasers named in titles", "value": db.query(
+                    func.count(func.distinct(models.QuestionMention.donor_name))).scalar()},
             ],
         },
         {

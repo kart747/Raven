@@ -4,6 +4,7 @@ import {
   ShieldAlert, Award, ExternalLink, Calendar, Filter, UserCheck, HelpCircle, FileText
 } from 'lucide-react';
 import { API_BASE } from '../api';
+import QuestionsExplorer from './QuestionsExplorer';
 
 const STATUS_COLORS = {
   high: 'bg-emerald-950/60 border-emerald-800/40 text-emerald-400',
@@ -523,6 +524,7 @@ export default function LegislativeTracker() {
           </div>
         </div>
       </div>
+      <QuestionsExplorer />
     </div>
   );
 }

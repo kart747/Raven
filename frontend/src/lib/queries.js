@@ -78,3 +78,16 @@ export const useDonorProfile = (id) =>
 
 export const useDataQuality = () =>
   useQuery({ queryKey: ['data-quality'], queryFn: () => apiGet('/api/v1/data-quality') });
+
+export const useQuestions = (params) =>
+  useQuery({
+    queryKey: ['questions', params],
+    queryFn: () => apiGet('/api/v1/questions', params),
+    placeholderData: keepPreviousData,
+  });
+
+export const useQuestionStats = (lokSabha) =>
+  useQuery({ queryKey: ['question-stats', lokSabha], queryFn: () => apiGet('/api/v1/questions/stats', { lok_sabha: lokSabha }) });
+
+export const useQuestionMinistries = () =>
+  useQuery({ queryKey: ['question-ministries'], queryFn: () => apiGet('/api/v1/questions/ministries') });

@@ -79,6 +79,27 @@ export default function DonorProfile({ donorId, onClose }) {
                 </div>
                 <p className="text-[10px] text-slate-500">{p.note}</p>
 
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-4">
+                  Lok Sabha questions naming this company ({p.questions_naming?.length || 0})
+                </h4>
+                {p.questions_naming?.length ? (
+                  <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+                    {p.questions_naming.map((q) => (
+                      <a key={q.id} href={q.official_url} target="_blank" rel="noopener noreferrer"
+                        className="p-2 bg-slate-950/60 border border-slate-900 hover:border-slate-700 rounded-lg text-xs">
+                        <span className="text-slate-500 text-[10px]">{q.date} · {q.ministry} · {q.representative}</span>
+                        <p className="text-slate-200">{q.title}</p>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">No question titles name this company.</p>
+                )}
+                <p className="text-[10px] text-slate-500">
+                  Exact name matches in question titles only. Asking about a company says nothing about the member's
+                  relationship with it.
+                </p>
+
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-4">Sourced events</h4>
                 {p.events.length === 0 ? (
                   <p className="text-xs text-slate-500">

@@ -226,8 +226,17 @@ def run_import() -> dict:
         from app.import_events import run_import as import_events
         events = import_events()
 
+        # Purchaser names may have changed, so recompute question mentions
+        from app.import_questions import link_mentions
+        mentions_db = SessionLocal()
+        try:
+            question_mentions = link_mentions(mentions_db)
+        finally:
+            mentions_db.close()
+
         return {
             "events_relinked": events.get("events_imported", 0),
+            "question_mentions": question_mentions,
             "unique_bonds_encashed": len(redemptions),
             "inserted": len(donations),
             "matched_to_purchaser": matched,

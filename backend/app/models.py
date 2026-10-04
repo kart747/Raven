@@ -209,3 +209,29 @@ class EntityEvent(Base):
     source_name = Column(String, nullable=True)
     source_url = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ParliamentQuestion(Base):
+    """A question asked in the Lok Sabha (one row per asking member)."""
+    __tablename__ = "parliament_questions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lok_sabha = Column(Integer, nullable=False, index=True)  # 15, 16, 17, 18
+    date = Column(String, nullable=False, index=True)  # YYYY-MM-DD
+    title = Column(String, nullable=False)
+    question_type = Column(String, nullable=True)  # Starred | Unstarred
+    ministry = Column(String, nullable=True, index=True)
+    representative = Column(String, nullable=False, index=True)
+    official_url = Column(String, nullable=False)  # answer PDF on sansad.in
+    source_url = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class QuestionMention(Base):
+    """A question whose title names a bond purchaser (exact phrase match, see app/import_questions.py)."""
+    __tablename__ = "question_mentions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    question_id = Column(Integer, ForeignKey("parliament_questions.id"), nullable=False, index=True)
+    donor_name = Column(String, nullable=False, index=True)  # canonical purchaser name
+    matched_text = Column(String, nullable=False)

@@ -31,10 +31,11 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 | ~~State assembly MLAs~~ ✅ done (`ingest-assemblies`) | MyNeta | Sitting MLAs from all 31 assemblies |
 | Rajya Sabha members; all assembly candidates (not only winners) | MyNeta (same importer) | Full picture of who stood, not only who won |
 | Election results since 1962 | ECI results; TCPD Lok Dhaba (check licence) | Who won, margins, turnout, linked to candidates |
-| Electoral trust contributions | ECI annual electoral trust reports | The biggest post-bond funding channel |
+| Electoral trust contributions | ECI annual electoral trust reports (PDFs on old.eci.gov.in, which disallows crawling, so this needs a manual-download importer) | The biggest post-bond funding channel |
 | Party contribution reports (Form 24A, >₹20,000) | ECI / party filings | Named donors outside the bond scheme |
 | MPLADS works | mplads.gov.in | What each MP spent their local-area fund on |
-| Lok Sabha & Rajya Sabha questions | sansad.in, data.gov.in | Full-text: who asked about which company or sector |
+| ~~Lok Sabha questions~~ ✅ done (`ingest-questions`, 2009 onwards) | Vonter / sansad.in | Who asked about which ministry, sector or company |
+| Rajya Sabha questions; full answer text | sansad.in PDFs | Search inside answers, not only titles |
 | SEBI, CCI and ED orders and press releases | Regulator websites | Structured, dated, sourced events for the purchaser timeline |
 
 ## Phase 2: Entity graph

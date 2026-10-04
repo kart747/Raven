@@ -36,6 +36,7 @@ back to the original source on every record.
 | **Candidate affidavits** | Every Lok Sabha 2024 candidate (with winners marked) and every sitting MLA from each state's latest assembly election, from MyNeta: declared assets, liabilities, pending cases, education. Per-state totals drive the map. |
 | **NGO foreign funding** | About 25,000 NGOs and 87,000 annual FCRA returns (FY2016-17 to FY2020-21), with sector breakdowns, flows and year-over-year increases. |
 | **Parliament activity** | Attendance, debates, questions and private member bills for the 18th Lok Sabha, plus per-state views. |
+| **Lok Sabha questions** | Every question asked since 2009 (15th–18th Lok Sabha), searchable by words, ministry and member, each linked to the official answer PDF. Purchaser profiles list questions whose titles name the company. |
 | **State map** | Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
 | **Data quality** | Live report of match rates, gaps and last-loaded times for every dataset. |
@@ -47,7 +48,7 @@ back to the original source on every record.
 | Electoral bonds | SBI disclosure to the Election Commission, 21 Mar 2024 ([cvrajeesh/electoral-bond-data](https://github.com/cvrajeesh/electoral-bond-data)) | Local clone |
 | FCRA foreign contributions | MHA annual returns ([mkonchady/fcra](https://github.com/mkonchady/fcra)) | Local clone |
 | Candidate affidavits (Lok Sabha 2024 and all 31 state/UT assemblies) | [MyNeta](https://myneta.info/) (ADR) | Scraped, rate-limited, cached |
-| MP activity & bills | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity) | Downloaded on import |
+| MP activity, bills & questions (ODbL-1.0) | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity), from sansad.in | Downloaded on import |
 | Press releases | PIB RSS (English national feed) | Live, cached 15 minutes |
 | Optional: FCRA status, purchaser industry and events | Your own sourced CSVs, see [data/README.md](data/README.md) | `data/*.csv` |
 
@@ -88,6 +89,7 @@ python -m app.cli ingest-fcra         # NGO foreign contributions
 python -m app.cli ingest-candidates   # Lok Sabha 2024 affidavits (slow first run, cached after)
 python -m app.cli ingest-assemblies   # sitting MLAs from each state's latest assembly election
 python -m app.cli ingest-legislative  # Lok Sabha activity and bills
+python -m app.cli ingest-questions    # Lok Sabha questions since 2009 + purchaser name matches
 python -m app.cli ingest-events       # sourced purchaser events
 python -m app.cli brief               # regenerate the AI brief
 python -m app.cli ingest-fcra-status LIST.xlsx --status Cancelled --source-url URL
@@ -153,6 +155,8 @@ docker-compose.yml  Postgres + API + web
 - Purchaser **industry** is empty until you add a sourced `data/donor_industry.csv`.
 - Candidate figures are self-declared. **"Criminal cases" are pending cases declared in the affidavit, not convictions.**
 - A date overlap between a bond and an event is **not** evidence of a connection, and the UI says so.
+- Question-to-company links are exact matches of a company's distinctive name in the question *title* only. Single-word names, generic names and individuals are never matched, so some real mentions are missed by design.
+- MyNeta's paginated lists skip rows, so Lok Sabha candidates are read constituency by constituency and MLAs are checked against MyNeta's published totals; each import reports any shortfall.
 
 ## Roadmap
 
