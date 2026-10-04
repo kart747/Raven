@@ -773,6 +773,88 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
     }
 
 
+# --- Key facts: deterministic, sourced statements for the front page ---
+@app.get("/api/v1/insights")
+def read_insights(db: Session = Depends(get_db)):
+    """Plain factual statements computed from the data. Each carries what it links to; no generated wording."""
+    D, C, P = models.Donation, models.Candidate, models.Party
+    facts = []
+
+    def pct(a, b):
+        return round(100 * a / b) if b else 0
+
+    eb = D.funding_type == "Electoral Bond"
+    total = db.query(func.coalesce(func.sum(D.amount), 0.0)).filter(eb).scalar()
+    top_party = db.query(P.id, P.name, func.sum(D.amount)).join(D, D.party_id == P.id).filter(eb)\
+        .group_by(P.id, P.name).order_by(desc(func.sum(D.amount))).first()
+    if total and top_party:
+        facts.append({"id": "top_party", "kind": "bonds",
+                      "text": f"{top_party[1]} encashed {pct(top_party[2], total)}% of all electoral bond money "
+                              f"(₹{top_party[2] / 1e7:,.0f} Cr of ₹{total / 1e7:,.0f} Cr).",
+                      "link": {"party": top_party[0]}})
+
+    parties_per_donor = func.count(func.distinct(D.party_id))
+    spread = db.query(models.Donor.id, models.Donor.name, parties_per_donor)\
+        .join(D, D.donor_id == models.Donor.id).filter(eb, models.Donor.name != "UNKNOWN DONOR")\
+        .group_by(models.Donor.id, models.Donor.name).order_by(desc(parties_per_donor)).first()
+    if spread and spread[2] > 1:
+        many = db.query(func.count()).select_from(
+            db.query(D.donor_id).filter(eb).group_by(D.donor_id).having(func.count(func.distinct(D.party_id)) >= 5).subquery()
+        ).scalar()
+        facts.append({"id": "spread", "kind": "bonds",
+                      "text": f"{many} purchasers' bonds were encashed by 5 or more parties; {spread[1]} "
+                              f"funded the most ({spread[2]} parties).",
+                      "link": {"donor": spread[0]}})
+
+    mps = db.query(C).filter(C.house == "Lok Sabha", C.is_winner.is_(True))
+    n_mps = mps.order_by(None).count()
+    if n_mps:
+        with_cases = mps.filter(C.criminal_cases > 0).order_by(None).count()
+        crorepati = mps.filter(C.assets >= 1e7).order_by(None).count()
+        facts.append({"id": "mp_cases", "kind": "candidates",
+                      "text": f"{pct(with_cases, n_mps)}% of Lok Sabha MPs elected in 2024 declared pending criminal "
+                              f"cases in their affidavits ({with_cases} of {n_mps}).",
+                      "link": {"tab": "candidates"}})
+        facts.append({"id": "mp_crorepati", "kind": "candidates",
+                      "text": f"{pct(crorepati, n_mps)}% of 2024 MPs declared assets of ₹1 crore or more.",
+                      "link": {"tab": "candidates"}})
+        richest = mps.order_by(desc(C.assets)).first()
+        facts.append({"id": "mp_richest", "kind": "candidates",
+                      "text": f"Highest declared assets among 2024 MPs: {richest.name} ({richest.constituency}, "
+                              f"{richest.state}), ₹{richest.assets / 1e7:,.0f} Cr.",
+                      "link": {"url": richest.source_url}})
+
+    mla = db.query(C.state, func.count(C.id), func.sum(case((C.criminal_cases > 0, 1), else_=0)))\
+        .filter(C.house == "Vidhan Sabha").group_by(C.state).all()
+    if mla:
+        n, k = sum(r[1] for r in mla), sum(int(r[2] or 0) for r in mla)
+        state, sn, sk = max((r for r in mla if r[1] >= 20), key=lambda r: (r[2] or 0) / r[1], default=mla[0])
+        facts.append({"id": "mla_cases", "kind": "candidates",
+                      "text": f"{pct(k, n)}% of sitting MLAs declared pending criminal cases; the highest share is in "
+                              f"{state} ({pct(int(sk or 0), sn)}%).",
+                      "link": {"state": state}})
+
+    ngo_total = db.query(func.coalesce(func.sum(models.NGODonation.amount), 0.0)).scalar()
+    top_ngo = db.query(models.NGO.id, models.NGO.name, func.sum(models.NGODonation.amount))\
+        .join(models.NGODonation, models.NGODonation.ngo_id == models.NGO.id)\
+        .group_by(models.NGO.id, models.NGO.name).order_by(desc(func.sum(models.NGODonation.amount))).first()
+    if ngo_total and top_ngo:
+        facts.append({"id": "ngo_top", "kind": "ngos",
+                      "text": f"NGOs declared ₹{ngo_total / 1e7:,.0f} Cr of foreign contributions in FY2016-17 to "
+                              f"FY2020-21; the largest recipient was {top_ngo[1]} (₹{top_ngo[2] / 1e7:,.0f} Cr).",
+                      "link": {"ngo": top_ngo[0]}})
+
+    Q = models.ParliamentQuestion
+    top_min = db.query(Q.ministry, func.count(Q.id)).filter(Q.lok_sabha == 18, Q.ministry.isnot(None))\
+        .group_by(Q.ministry).order_by(desc(func.count(Q.id))).first()
+    if top_min:
+        facts.append({"id": "questions_ministry", "kind": "parliament",
+                      "text": f"The most-questioned ministry in the 18th Lok Sabha so far is {top_min[0]} "
+                              f"({top_min[1]:,} questions).",
+                      "link": {"tab": "legislative"}})
+    return facts
+
+
 # --- Bond flows: largest purchasers -> parties ---
 @app.get("/api/v1/bonds/flows")
 def read_bond_flows(top: int = Query(15, ge=5, le=40), db: Session = Depends(get_db)):

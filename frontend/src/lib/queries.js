@@ -108,3 +108,6 @@ export const useBondFlows = (top) =>
 
 export const useCandidateParties = (params) =>
   useQuery({ queryKey: ['candidate-parties', params], queryFn: () => apiGet('/api/v1/candidates/parties', params) });
+
+export const useInsights = () =>
+  useQuery({ queryKey: ['insights'], queryFn: () => apiGet('/api/v1/insights') });

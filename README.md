@@ -31,6 +31,7 @@ back to the original source on every record.
 
 | Area | What you get |
 |---|---|
+| **Key facts** | Plain statements computed live from the data (e.g. share of MPs declaring cases, largest bond recipient), each linking to the records behind it. No AI wording. |
 | **Electoral bonds** | All 20,384 encashed bonds (Apr 2019 – Feb 2024), joined to purchasers on the unique bond number. Search, filter by party, year or purchaser, export CSV. |
 | **Purchaser profiles** | Each company's total, the parties it funded, monthly encashments, and every spelling SBI printed for the name. Optional sourced events (court orders, raids, contract awards) can be shown on the same timeline. |
 | **Candidate affidavits** | Every Lok Sabha 2024 candidate (with winners marked) and every sitting MLA from each state's latest assembly election, from MyNeta: declared assets, liabilities, pending cases, education. Per-state totals drive the map. |

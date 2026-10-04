@@ -168,7 +168,7 @@ paths = ["/api/v1/parties", "/api/v1/donations", "/api/v1/donations/stats", "/ap
          "/api/v1/candidates/state-summary", "/api/v1/candidates/elections", "/api/v1/ngos",
          "/api/v1/ngos/stats", "/api/v1/mp-activity/stats", "/api/v1/questions",
          "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows",
-         "/api/v1/search?q=ab", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources"]
+         "/api/v1/search?q=ab", "/api/v1/insights", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources"]
 with TestClient(app) as client:
     bad = [(p, client.get(p).status_code) for p in paths]
     bad = [b for b in bad if b[1] != 200]

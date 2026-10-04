@@ -15,6 +15,7 @@ import SearchPalette from './components/SearchPalette';
 import useHashParams from './lib/useHashParams';
 import PibTicker from './components/dashboard/PibTicker';
 import BondFlows from './components/dashboard/BondFlows';
+import KeyFacts from './components/dashboard/KeyFacts';
 import StateDossier from './components/dashboard/StateDossier';
 import { useCandidateStateSummary, useDashboardStats, useParties } from './lib/queries';
 
@@ -106,6 +107,7 @@ export default function App() {
 
         {activeTab === 'dashboard' && (
           <div className="flex flex-col gap-6">
+            <KeyFacts onNavigate={(link) => setHash(link)} />
             <DashboardStats stats={stats} loading={statsLoading} onOpenDonor={setDonorId} onOpenParty={setPartyId} />
             <BondFlows onOpenDonor={setDonorId} onOpenParty={setPartyId} />
             <PibTicker />
