@@ -102,3 +102,6 @@ export const useSearch = (q) =>
 
 export const usePartyProfile = (id) =>
   useQuery({ queryKey: ['party', id], queryFn: () => apiGet(`/api/v1/parties/${encodeURIComponent(id)}/profile`), enabled: !!id });
+
+export const useBondFlows = (top) =>
+  useQuery({ queryKey: ['bond-flows', top], queryFn: () => apiGet('/api/v1/bonds/flows', { top }) });

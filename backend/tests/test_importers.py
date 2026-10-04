@@ -79,7 +79,12 @@ def test_entity_resolution_merges_spellings_not_distinct_entities():
         "B G SHIRKE CONSTRUCTION TECHNOLOGY PVT L TD": 113, "BG SHIRKE CONSTRUCTION TECHNOLOGY PVT LTD": 6,
         "WARORA CHANDRAPUR BALLARPUR TOLLRO": 3, "WARORA CHANDRAPUR BALLARPUR TOLLROA": 5,
         "KISHAN M AGARWAL": 1, "KISHAN M AGARWAL HUF": 1,
+        "FUTURE GAMING AND HOTEL SERVICES PR": 1180,
+        "FUTURE GAMING AND HOTEL SERVICES PRIVATE LIMITED": 93, "FUTURE GAMING AND HOTEL SERVICES PVT LTD": 64,
     }))
+    # Cut off mid-"PRIVATE": still the same company
+    assert m["FUTURE GAMING AND HOTEL SERVICES PR"] == m["FUTURE GAMING AND HOTEL SERVICES PVT LTD"] \
+        == "FUTURE GAMING AND HOTEL SERVICES PRIVATE LIMITED"
     assert m["VEDANTA LTD"] == m["VEDANTA LIMITED"] == "VEDANTA LIMITED"
     assert m["MEGHA ENGINEERING & INFRASTRUCTURES LIMITED"] == "MEGHA ENGINEERING AND INFRASTRUCTURES LIMITED"
     assert m["BG SHIRKE CONSTRUCTION TECHNOLOGY PVT LTD"] == m["B G SHIRKE CONSTRUCTION TECHNOLOGY PVT L TD"]
@@ -149,3 +154,28 @@ def test_question_mentions_are_conservative():
               2: "Megha rainfall in Engineering colleges"}
     assert find_mentions(titles, ["MEGHA ENGINEERING AND INFRASTRUCTURES LIMITED"]) == [
         (1, "MEGHA ENGINEERING AND INFRASTRUCTURES LIMITED", "MEGHA ENGINEERING AND INFRASTRUCTURES")]
+
+
+def test_api_endpoints_respond_on_an_empty_database(tmp_path):
+    """Smoke test: on a brand-new database every list/stats endpoint returns 200, not a 500."""
+    import os
+    import subprocess
+    import sys
+    script = """
+from fastapi.testclient import TestClient
+from app.main import app
+paths = ["/api/v1/parties", "/api/v1/donations", "/api/v1/donations/stats", "/api/v1/candidates",
+         "/api/v1/candidates/state-summary", "/api/v1/candidates/elections", "/api/v1/ngos",
+         "/api/v1/ngos/stats", "/api/v1/mp-activity/stats", "/api/v1/questions",
+         "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows",
+         "/api/v1/search?q=ab", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources"]
+with TestClient(app) as client:
+    bad = [(p, client.get(p).status_code) for p in paths]
+    bad = [b for b in bad if b[1] != 200]
+    assert not bad, bad
+print("ok")
+"""
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'empty.db'}", "GROQ_API_KEY": ""}
+    backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr[-2000:]

@@ -728,6 +728,44 @@ def read_donor_profile(donor_id: int, db: Session = Depends(get_db)):
     }
 
 
+# --- Bond flows: largest purchasers -> parties ---
+@app.get("/api/v1/bonds/flows")
+def read_bond_flows(top: int = Query(15, ge=5, le=40), db: Session = Depends(get_db)):
+    """Sankey-ready flows from the largest identified purchasers to the parties that encashed their bonds."""
+    D = models.Donation
+    amount = func.sum(D.amount)
+    eb = [D.funding_type == "Electoral Bond"]
+    top_donors = db.query(models.Donor.id, models.Donor.name, amount)\
+        .join(D, D.donor_id == models.Donor.id)\
+        .filter(*eb, models.Donor.name != "UNKNOWN DONOR")\
+        .group_by(models.Donor.id, models.Donor.name).order_by(desc(amount)).limit(top).all()
+    ids = [d for d, _, _ in top_donors]
+    flows = db.query(D.donor_id, D.party_id, amount).filter(*eb, D.donor_id.in_(ids))\
+        .group_by(D.donor_id, D.party_id).all()
+    party_names = dict(db.query(models.Party.id, models.Party.name))
+
+    nodes, index = [], {}
+
+    def node(key, label, kind, ref):
+        if key not in index:
+            index[key] = len(nodes)
+            nodes.append({"name": label, "kind": kind, "ref": ref})
+        return index[key]
+
+    for d, name, _ in top_donors:
+        node(f"d{d}", name, "purchaser", d)
+    links = [
+        {"source": node(f"d{d}", "", "purchaser", d),
+         "target": node(f"p{p}", p, "party", p),
+         "value": float(a), "party_name": party_names.get(p, p)}
+        for d, p, a in sorted(flows, key=lambda f: -f[2])
+    ]
+    total = sum(float(a) for _, _, a in top_donors)
+    all_total = db.query(func.coalesce(amount, 0.0)).filter(*eb).scalar()
+    return {"nodes": nodes, "links": links, "covered_amount": total,
+            "share_of_all_bonds": round(100 * total / all_total, 1) if all_total else 0}
+
+
 # --- Party profile: money in, representatives, affidavits, parliament ---
 @app.get("/api/v1/parties/{party_id}/profile")
 def read_party_profile(party_id: str, db: Session = Depends(get_db)):
@@ -913,7 +951,7 @@ def read_question_stats(lok_sabha: Optional[int] = Query(None, ge=15, le=18), db
     year = func.substr(Q.date, 1, 4)
     return {
         "total": db.query(n).filter(*flt).scalar(),
-        "date_range": db.query(func.min(Q.date), func.max(Q.date)).filter(*flt).one(),
+        "date_range": list(db.query(func.min(Q.date), func.max(Q.date)).filter(*flt).one()),
         "by_ministry": [{"ministry": m, "count": c} for m, c in
                         db.query(Q.ministry, n).filter(*flt).group_by(Q.ministry).order_by(desc(n)).limit(15)],
         "by_year": [{"year": y, "count": c} for y, c in

@@ -25,6 +25,11 @@ def entity_key(name: str) -> str:
     return _SUFFIX_LTD.sub("LTD", n)
 
 
+def _compact(name: str) -> str:
+    """Letters and digits only, with "&" read as AND; no suffix normalisation."""
+    return re.sub(r"[^A-Z0-9]", "", name.upper().replace("&", " AND "))
+
+
 def clean_display(name: str) -> str:
     """Tidy spacing artefacts without changing the words."""
     n = " ".join(name.upper().split())
@@ -41,14 +46,20 @@ def resolve(name_counts: Counter) -> dict[str, str]:
         groups[entity_key(raw)].append(raw)
 
     keys = sorted(groups)
+    # Truncation is checked on the raw letters, before legal suffixes are normalised:
+    # "...SERVICES PR" is a cut-off "...SERVICES PRIVATE LIMITED", but not a prefix of "...SERVICESPVTLTD".
+    compact = {k: {_compact(r) for r in groups[k]} for k in keys}
     merged_into: dict[str, str] = {}
     for key in keys:
         shortest = min(groups[key], key=len)
         if len(shortest) < TRUNCATION_MIN_LEN:
             continue
+        short = _compact(shortest)
         longer = [
             k for k in keys
-            if k != key and k.startswith(key) and not any(r.rstrip().endswith("HUF") for r in groups[k])
+            if k != key
+            and any(c != short and c.startswith(short) for c in compact[k])
+            and not any(r.rstrip().endswith("HUF") for r in groups[k])
         ]
         if len(longer) == 1:
             merged_into[key] = longer[0]
