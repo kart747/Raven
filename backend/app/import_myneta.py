@@ -166,7 +166,8 @@ def published_totals(slug: str) -> dict[str, int]:
     return {kind: int(n.replace(",", "")) for kind, n in found}
 
 
-def summary_rows(slug: str, sub_action: str, expected: int | None = None, max_pages: int = 1000) -> dict[int, dict]:
+def summary_rows(slug: str, sub_action: str, expected: int | None = None, max_pages: int = 1000,
+                 max_sorts: int = len(SORTS)) -> dict[int, dict]:
     """
     Rows of a MyNeta summary listing (e.g. winner_analyzed).
 
@@ -175,7 +176,7 @@ def summary_rows(slug: str, sub_action: str, expected: int | None = None, max_pa
     """
     base = election_url(slug)
     rows: dict[int, dict] = {}
-    for sort in SORTS:
+    for sort in SORTS[:max_sorts]:
         seen_this_sort: set[int] = set()
         for page in range(1, max_pages + 1):
             url = f"{base}index.php?action=summary&subAction={sub_action}&sort={sort}&page={page}"
@@ -312,9 +313,14 @@ def run_import() -> dict:
             rows[c["candidate_id"]] = {**c, "state": canonical_state(region)}
 
     totals = published_totals(slug)
-    winners_text = summary_rows(slug, "winner_analyzed", expected=totals.get("winners"))
+    # Constituency pages show some candidates' figures only as images; take them from the text listings
+    # (one pass over all candidates, plus winners across sort orders), then candidate pages for the rest.
+    text_rows = summary_rows(slug, "candidates_analyzed", max_sorts=1)
+    text_rows.update(summary_rows(slug, "winner_analyzed", expected=totals.get("winners")))
     rows_list = list(rows.values())
-    unresolved = _fill_figures(slug, rows_list, winners_text)
+    needed = sum(r["assets"] is None and r["candidate_id"] not in text_rows for r in rows_list)
+    print(f"Lok Sabha: {len(rows_list)} candidates; {needed} need their own candidate page for figures", flush=True)
+    unresolved = _fill_figures(slug, rows_list, text_rows)
     _replace_election("Lok Sabha 2024", "Lok Sabha", ELECTION_YEAR, rows_list, legacy_year=ELECTION_YEAR)
     return {
         "candidates_imported": len(rows_list),
