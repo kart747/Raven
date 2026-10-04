@@ -195,7 +195,7 @@ def read_donations_stats(
 CANDIDATE_CSV_COLUMNS = [
     ("Candidate ID", "id"), ("Candidate Name", "name"), ("Party ID", "party_id"),
     ("Party Name", "party_name"), ("State", "state"), ("Constituency", "constituency"),
-    ("Election Year", "year"), ("Total Assets (INR)", "assets"), ("Liabilities (INR)", "liabilities"),
+    ("Election", "election"), ("House", "house"), ("Won", "is_winner"), ("Total Assets (INR)", "assets"), ("Liabilities (INR)", "liabilities"),
     ("Criminal Cases Declared", "criminal_cases"), ("Education", "education"),
     ("Source Name", "source_name"), ("Source URL", "source_url"),
 ]
@@ -207,13 +207,17 @@ def read_candidates(
     party_id: Optional[str] = Query(None, description="Filter by party ID"),
     search: Optional[str] = Query(None, description="Search candidate name or constituency"),
     sort_by: Optional[str] = Query(None, description="Sort candidates by 'assets' or 'criminal_cases'"),
+    house: Optional[str] = Query(None, description="'Lok Sabha' or 'Vidhan Sabha'"),
+    election: Optional[str] = Query(None, description="e.g. 'Lok Sabha 2024', 'Karnataka 2023'"),
+    winners_only: bool = Query(False, description="Only election winners (sitting MPs/MLAs)"),
     limit: int = Query(100, ge=1, le=MAX_PAGE),
     offset: int = Query(0, ge=0),
     export_csv: bool = Query(False, description="Export as CSV"),
     db: Session = Depends(get_db)
 ):
     """Candidate affidavit dossiers with filtering, sorting, and CSV export."""
-    filters = dict(state=state, party_id=party_id, search=search, sort_by=sort_by)
+    filters = dict(state=state, party_id=party_id, search=search, sort_by=sort_by,
+                   house=house, election=election, winners_only=winners_only)
     if export_csv:
         results, _ = crud.get_candidates(db, **filters, limit=MAX_EXPORT_ROWS, offset=0)
         return csv_response(results, CANDIDATE_CSV_COLUMNS, "raven_candidates.csv")
@@ -221,16 +225,35 @@ def read_candidates(
     return paged(results, total, limit, offset)
 
 
+@app.get("/api/v1/candidates/elections")
+def read_candidate_elections(db: Session = Depends(get_db)):
+    """Elections with imported affidavits, newest first."""
+    rows = db.query(
+        models.Candidate.election, models.Candidate.house, models.Candidate.state, models.Candidate.year,
+        func.count(models.Candidate.id),
+    ).filter(models.Candidate.election.isnot(None))\
+     .group_by(models.Candidate.election, models.Candidate.house, models.Candidate.state, models.Candidate.year).all()
+    elections = {}
+    for election, house, state, year, count in rows:
+        e = elections.setdefault(election, {"election": election, "house": house, "year": year, "count": 0,
+                                            "state": state if house == "Vidhan Sabha" else None})
+        e["count"] += count
+    return sorted(elections.values(), key=lambda e: (-e["year"], e["election"]))
+
+
 @app.get("/api/v1/candidates/state-summary")
-def read_candidate_state_summary(db: Session = Depends(get_db)):
-    """Per-state candidate totals for the map (computed in SQL over all candidates)."""
+def read_candidate_state_summary(
+    house: str = Query("Lok Sabha", description="'Lok Sabha' (all candidates) or 'Vidhan Sabha' (sitting MLAs)"),
+    db: Session = Depends(get_db),
+):
+    """Per-state candidate totals for the map (computed in SQL)."""
     rows = db.query(
         models.Candidate.state,
         func.count(models.Candidate.id),
         func.coalesce(func.sum(models.Candidate.assets), 0.0),
         func.coalesce(func.sum(models.Candidate.criminal_cases), 0),
         func.sum(case((models.Candidate.criminal_cases > 0, 1), else_=0)),
-    ).group_by(models.Candidate.state).all()
+    ).filter(models.Candidate.house == house).group_by(models.Candidate.state).all()
     return {
         state: {
             "candidate_count": count,
@@ -722,9 +745,16 @@ def read_data_quality(db: Session = Depends(get_db)):
     ngo_verified = db.query(func.count(models.NGO.id)).filter(models.NGO.registration_status != "Unknown").scalar()
     ngo_years = [y for (y,) in db.query(models.NGODonation.year).distinct().order_by(models.NGODonation.year)]
 
-    candidates = db.query(func.count(models.Candidate.id)).scalar()
-    cand_no_state = db.query(func.count(models.Candidate.id)).filter(models.Candidate.state == "Unknown").scalar()
-    cand_states = db.query(func.count(func.distinct(models.Candidate.state))).scalar()
+    ls = models.Candidate.house == "Lok Sabha"
+    candidates = db.query(func.count(models.Candidate.id)).filter(ls).scalar()
+    cand_no_state = db.query(func.count(models.Candidate.id)).filter(ls, models.Candidate.state == "Unknown").scalar()
+    cand_states = db.query(func.count(func.distinct(models.Candidate.state))).filter(ls).scalar()
+    ls_winners = db.query(func.count(models.Candidate.id)).filter(ls, models.Candidate.is_winner.is_(True)).scalar()
+    vs = models.Candidate.house == "Vidhan Sabha"
+    mlas = db.query(func.count(models.Candidate.id)).filter(vs).scalar()
+    assemblies = db.query(func.count(func.distinct(models.Candidate.election))).filter(vs).scalar()
+    mlas_with_cases = db.query(func.count(models.Candidate.id)).filter(vs, models.Candidate.criminal_cases > 0).scalar()
+    mla_loaded = db.query(func.max(models.Candidate.created_at)).filter(vs).scalar()
 
     mps = db.query(func.count(models.MPActivity.id)).scalar()
     mps_no_attendance = db.query(func.count(models.MPActivity.id)).filter(models.MPActivity.attendance_pct.is_(None)).scalar()
@@ -771,7 +801,16 @@ def read_data_quality(db: Session = Depends(get_db)):
             "rows": candidates, "last_loaded": last_loaded(models.Candidate),
             "metrics": [
                 {"label": "States / UTs covered", "value": cand_states},
+                {"label": "Winners (sitting MPs)", "value": ls_winners},
                 {"label": "Candidates without a state", "value": cand_no_state},
+            ],
+        },
+        {
+            "id": "mlas", "label": "Sitting MLAs (latest assembly elections)",
+            "rows": mlas, "last_loaded": mla_loaded.isoformat() if mla_loaded else None,
+            "metrics": [
+                {"label": "Assemblies covered", "value": f"{assemblies} of 31"},
+                {"label": "MLAs declaring pending cases", "value": pct(mlas_with_cases, mlas), "unit": "%"},
             ],
         },
         {

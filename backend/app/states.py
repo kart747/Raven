@@ -12,6 +12,7 @@ CANONICAL_STATES = [
 _ALIASES = {
     "NEW DELHI": "Delhi",
     "NCT OF DELHI": "Delhi",
+    "DELHI (NCT)": "Delhi",
     "TAMILNADU": "Tamil Nadu",
     "WESTBENGAL": "West Bengal",
     "W.BENGAL": "West Bengal",
@@ -29,6 +30,7 @@ _ALIASES = {
     "ORISSA": "Odisha",
     "PONDICHERRY": "Puducherry",
     "UTTARANCHAL": "Uttarakhand",
+    "CHATTISGARH": "Chhattisgarh",
     "ANDAMAN AND NICOBAR": "Andaman and Nicobar Islands",
     "DADRA AND NAGAR HAVELI": "Dadra and Nagar Haveli and Daman and Diu",
     "DAMAN AND DIU": "Dadra and Nagar Haveli and Daman and Diu",

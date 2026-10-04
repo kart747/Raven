@@ -27,6 +27,22 @@ def ensure_schema():
     """create_all() skips indexes on tables that already exist, so add any missing ones."""
     from . import models  # noqa: F401  (registers the tables on Base.metadata)
     Base.metadata.create_all(bind=engine)
+    _add_missing_columns()
     for table in Base.metadata.sorted_tables:
         for index in table.indexes:
             index.create(bind=engine, checkfirst=True)
+
+
+def _add_missing_columns():
+    """Additive migration: add nullable columns that exist on a model but not yet in the database."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if not inspector.has_table(table.name):
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name not in existing and column.nullable:
+                    col_type = column.type.compile(dialect=engine.dialect)
+                    conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN {column.name} {col_type}'))

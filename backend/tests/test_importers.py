@@ -64,6 +64,8 @@ def test_state_names_are_canonical():
     assert canonical_state("ORISSA") == "Odisha"
     assert canonical_state("Andaman & Nicobar") == "Andaman and Nicobar Islands"
     assert canonical_state("Pondicherry") == "Puducherry"
+    assert canonical_state("DELHI (NCT)") == "Delhi"
+    assert canonical_state("Chattisgarh") == "Chhattisgarh"
     assert canonical_state(None) == "Unknown"
 
 
@@ -101,3 +103,36 @@ def test_fcra_status_list_column_detection():
         ["", "", "", ""],
     ]
     assert extract_registration_numbers(rows) == ["231650112", "075900983"]
+
+
+def test_myneta_constituency_page_marks_winner_and_defers_image_figures():
+    from app.import_myneta import parse_constituency_page, election_url
+    html = """<html><head><title>List of Candidates in WEST DELHI : DELHI (NCT) Lok Sabha 2024</title></head><body><table>
+      <tr><th>SNo</th><th>Candidate</th><th>Party</th><th>Criminal Cases</th><th>Education</th><th>Age</th>
+          <th>Total Assets</th><th>Liabilities</th></tr>
+      <tr><td>3</td><td><a href=candidate.php?candidate_id=7624>Winning Person</a><b>&nbsp<font> Winner </font></td>
+          <td>BJP</td><td><span><b> 1 </b></span></td><td>10th Pass</td><td>53</td>
+          <td><img src=x.png></td><td><img src=y.png></td></tr>
+      <tr><td>1</td><td><a href=candidate.php?candidate_id=8727>Other Person</a><b></td>
+          <td>IND</td><td>0</td><td>12th Pass</td><td>63</td>
+          <td>Rs&nbsp;54,42,410<br><span> ~ 54&nbsp;Lacs+</span></td><td>Rs&nbsp;17,00,000</td></tr>
+    </table></body></html>"""
+    constituency, region, rows = parse_constituency_page(html, election_url("LokSabha2024"), "LokSabha2024")
+    assert (constituency, region) == ("West Delhi", "DELHI (NCT)")
+    winner, other = rows
+    assert winner["is_winner"] and winner["criminal_cases"] == 1 and winner["assets"] is None
+    assert not other["is_winner"] and other["assets"] == 5442410 and other["liabilities"] == 1700000
+    assert winner["source_url"] == "https://myneta.info/LokSabha2024/candidate.php?candidate_id=7624"
+
+
+def test_myneta_prefers_the_elections_own_candidate_link():
+    from app.import_myneta import parse_summary_page, election_url
+    html = """<table>
+      <tr><th>Sno</th><th>Candidate</th><th>Constituency</th><th>Party</th><th>Criminal Case</th>
+          <th>Education</th><th>Total Assets</th><th>Liabilities</th></tr>
+      <tr><td>1</td><td><a href=/candidate.php?candidate_id=7087><a href=/Karnataka2023/candidate.php?candidate_id=7087>M.Y.Patil</a></a></td>
+          <td>AFZALPUR</td><td>INC</td><td>0</td><td>Graduate</td><td>Rs 4,69,32,109 ~ 4 Crore+</td><td>Rs 0 ~</td></tr>
+    </table>"""
+    [row] = parse_summary_page(html, base_url=election_url("Karnataka2023"), slug="Karnataka2023")
+    assert row["source_url"] == "https://myneta.info/Karnataka2023/candidate.php?candidate_id=7087"
+    assert row["name"] == "M.Y.Patil" and row["constituency"] == "Afzalpur" and row["assets"] == 46932109

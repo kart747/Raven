@@ -11,6 +11,7 @@ candidate affidavits and parliamentary activity into one searchable, source-link
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688)
 ![React](https://img.shields.io/badge/React-18-61dafb)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL%20%7C%20SQLite-336791)
+![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)
 
 </div>
 
@@ -32,10 +33,10 @@ back to the original source on every record.
 |---|---|
 | **Electoral bonds** | All 20,384 encashed bonds (Apr 2019 – Feb 2024), joined to purchasers on the unique bond number. Search, filter by party, year or purchaser, export CSV. |
 | **Purchaser profiles** | Each company's total, the parties it funded, monthly encashments, and every spelling SBI printed for the name. Optional sourced events (court orders, raids, contract awards) can be shown on the same timeline. |
-| **Candidate affidavits** | Lok Sabha 2024 candidates from MyNeta: declared assets, liabilities, pending cases, education. Per-state totals drive the map. |
+| **Candidate affidavits** | Every Lok Sabha 2024 candidate (with winners marked) and every sitting MLA from each state's latest assembly election, from MyNeta: declared assets, liabilities, pending cases, education. Per-state totals drive the map. |
 | **NGO foreign funding** | About 25,000 NGOs and 87,000 annual FCRA returns (FY2016-17 to FY2020-21), with sector breakdowns, flows and year-over-year increases. |
 | **Parliament activity** | Attendance, debates, questions and private member bills for the 18th Lok Sabha, plus per-state views. |
-| **State map** | Click a state to see its candidates, NGOs and MPs side by side. |
+| **State map** | Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
 | **Data quality** | Live report of match rates, gaps and last-loaded times for every dataset. |
 
@@ -45,7 +46,7 @@ back to the original source on every record.
 |---|---|---|
 | Electoral bonds | SBI disclosure to the Election Commission, 21 Mar 2024 ([cvrajeesh/electoral-bond-data](https://github.com/cvrajeesh/electoral-bond-data)) | Local clone |
 | FCRA foreign contributions | MHA annual returns ([mkonchady/fcra](https://github.com/mkonchady/fcra)) | Local clone |
-| Candidate affidavits | [MyNeta](https://myneta.info/LokSabha2024/) (ADR) | Scraped, rate-limited, cached |
+| Candidate affidavits (Lok Sabha 2024 and all 31 state/UT assemblies) | [MyNeta](https://myneta.info/) (ADR) | Scraped, rate-limited, cached |
 | MP activity & bills | [Vonter/india-representatives-activity](https://github.com/Vonter/india-representatives-activity) | Downloaded on import |
 | Press releases | PIB RSS (English national feed) | Live, cached 15 minutes |
 | Optional: FCRA status, purchaser industry and events | Your own sourced CSVs, see [data/README.md](data/README.md) | `data/*.csv` |
@@ -84,7 +85,8 @@ To load one dataset at a time:
 python -m app.cli seed                # party reference list
 python -m app.cli ingest-bonds        # electoral bonds
 python -m app.cli ingest-fcra         # NGO foreign contributions
-python -m app.cli ingest-candidates   # MyNeta affidavits (slow, ~460 pages, resumable)
+python -m app.cli ingest-candidates   # Lok Sabha 2024 affidavits (slow first run, cached after)
+python -m app.cli ingest-assemblies   # sitting MLAs from each state's latest assembly election
 python -m app.cli ingest-legislative  # Lok Sabha activity and bills
 python -m app.cli ingest-events       # sourced purchaser events
 python -m app.cli brief               # regenerate the AI brief
@@ -152,6 +154,12 @@ docker-compose.yml  Postgres + API + web
 - Candidate figures are self-declared. **"Criminal cases" are pending cases declared in the affidavit, not convictions.**
 - A date overlap between a bond and an event is **not** evidence of a connection, and the UI says so.
 
+## Roadmap
+
+Raven is growing into an open, source-linked knowledge graph of money and power in Indian public life:
+state assemblies, election results, electoral trusts, government contracts, regulator orders and more.
+See [ROADMAP.md](ROADMAP.md) for the plan and the datasets that need contributors.
+
 ## Development
 
 ```bash
@@ -159,9 +167,8 @@ cd backend && venv/bin/python -m pytest      # importer and parsing tests
 cd frontend && npm run build                 # production build
 ```
 
-Contributions that add a **sourced** dataset are especially welcome: write an importer in
-`backend/app/`, give every row a source URL, and add tests for the parsing. Please don't add placeholder or
-estimated values for real people or organisations.
+Contributions that add a **sourced** dataset are especially welcome. [CONTRIBUTING.md](CONTRIBUTING.md)
+walks through adding one. Please don't add placeholder or estimated values for real people or organisations.
 
 ## Corrections
 
@@ -170,4 +177,7 @@ official source showing the correct value, and it will be fixed promptly.
 
 ## Licence
 
-No licence has been chosen yet. Until one is added (MIT is a common choice), the code is all rights reserved.
+[GNU AGPL-3.0](LICENSE). You can use, study, modify and share Raven. If you run a modified version as a public
+service, you must publish your changes under the same licence, so improvements stay open.
+
+Data imported from third-party sources remains under each source's own terms.

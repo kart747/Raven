@@ -1,294 +1,163 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Download, ShieldAlert, Award, TrendingUp, ExternalLink } from 'lucide-react';
-import { API_BASE } from '../api';
+import { useEffect, useState } from 'react';
+import { Award, Download, ExternalLink, Search } from 'lucide-react';
+import { apiUrl } from '../api';
+import { formatInr } from '../lib/format';
+import { useCandidates, useElections } from '../lib/queries';
+import { STATES } from '../lib/states';
+import { INPUT, RESET_BTN } from './ngos/constants';
+import Pagination from './ui/Pagination';
+import Spinner from './ui/Spinner';
+
+const LIMIT = 10;
+const VIEWS = [
+  { id: 'ls', label: 'Lok Sabha 2024: all candidates', params: { house: 'Lok Sabha' } },
+  { id: 'mp', label: 'Lok Sabha 2024: winners (MPs)', params: { house: 'Lok Sabha', winners_only: true } },
+  { id: 'mla', label: 'Sitting MLAs (latest assembly elections)', params: { house: 'Vidhan Sabha' } },
+];
 
 export default function CandidatesTable({ parties, initialFilterState }) {
-  const [data, setData] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState('ls');
+  const [election, setElection] = useState('');
   const [search, setSearch] = useState('');
-  const [selectedParty, setSelectedParty] = useState('');
-  const [selectedState, setSelectedState] = useState(initialFilterState || '');
+  const [party, setParty] = useState('');
+  const [state, setState] = useState(initialFilterState || '');
   const [sortBy, setSortBy] = useState('');
-  const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
 
-  // States list
-  const states = [
-    "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam",
-    "Bihar", "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli", "Daman and Diu",
-    "Delhi", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir",
-    "Jharkhand", "Karnataka", "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh",
-    "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha",
-    "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
-    "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
-  ];
+  useEffect(() => { setState(initialFilterState || ''); setOffset(0); }, [initialFilterState]);
 
-  // Sync state filter when user clicks map
-  useEffect(() => {
-    if (initialFilterState !== undefined) {
-      setSelectedState(initialFilterState || '');
-      setOffset(0);
-    }
-  }, [initialFilterState]);
+  const { data: elections = [] } = useElections();
+  const assemblies = elections.filter((e) => e.house === 'Vidhan Sabha');
 
-  // Fetch candidates from backend
-  const fetchCandidates = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString(),
-      });
-      if (search) params.append('search', search);
-      if (selectedParty) params.append('party_id', selectedParty);
-      if (selectedState) params.append('state', selectedState);
-      if (sortBy) params.append('sort_by', sortBy);
-
-      const response = await fetch(`${API_BASE}/api/v1/candidates?${params.toString()}`);
-      if (response.ok) {
-        const res = await response.json();
-        setData(res.data);
-        setTotal(res.total);
-      }
-    } catch (err) {
-      console.error("Error fetching candidates:", err);
-    } finally {
-      setLoading(false);
-    }
+  const filters = {
+    ...VIEWS.find((v) => v.id === view).params,
+    election: view === 'mla' ? election : '',
+    search, party_id: party, state, sort_by: sortBy,
   };
-
-  useEffect(() => {
-    fetchCandidates();
-  }, [search, selectedParty, selectedState, sortBy, limit, offset]);
-
-  const handlePageChange = (newOffset) => {
-    setOffset(newOffset);
-  };
-
-  // CSV Export Trigger
-  const handleExportCSV = () => {
-    const params = new URLSearchParams({
-      export_csv: 'true',
-    });
-    if (search) params.append('search', search);
-    if (selectedParty) params.append('party_id', selectedParty);
-    if (selectedState) params.append('state', selectedState);
-    if (sortBy) params.append('sort_by', sortBy);
-
-    window.open(`${API_BASE}/api/v1/candidates?${params.toString()}`);
-  };
-
-  // Format currency in Indian Style (Crore/Lakh)
-  const formatINR = (val) => {
-    if (!val) return '₹0';
-    if (val >= 10000000) {
-      return `₹${(val / 10000000).toFixed(2)} Cr`;
-    } else if (val >= 100000) {
-      return `₹${(val / 100000).toFixed(2)} Lakh`;
-    }
-    return `₹${val.toLocaleString('en-IN')}`;
-  };
+  const { data, isLoading, isError } = useCandidates({ ...filters, limit: LIMIT, offset });
+  const rows = data?.data || [];
+  const update = (setter) => (e) => { setter(e.target.value); setOffset(0); };
 
   return (
     <div className="glass-panel rounded-2xl p-6 flex flex-col gap-6 shadow-xl">
-      {/* Header controls */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-cyan-400" />
-            2024 Candidate Spotlight (Curated Sample)
+            <Award className="w-5 h-5 text-cyan-400" /> Candidate Affidavits
           </h2>
-          <p className="text-xs text-slate-400">Selected affidavit records from ADR/MyNeta, presented as a curated sample rather than a full bulk import.</p>
+          <p className="text-xs text-slate-400">
+            Self-declared in nomination papers, compiled by ADR/MyNeta. "Cases" are pending cases declared by the
+            candidate, not convictions.
+          </p>
         </div>
-
-        <button
-          onClick={handleExportCSV}
-          className="flex items-center gap-2 self-start lg:self-center px-4 py-2 bg-cyan-950/80 border border-cyan-800/40 text-cyan-400 hover:bg-cyan-900/50 hover:text-white rounded-xl text-xs font-semibold transition-all"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Export Filtered CSV
+        <button onClick={() => window.open(apiUrl('/api/v1/candidates', { ...filters, export_csv: true }))}
+          className="flex items-center gap-2 self-start lg:self-center px-4 py-2 bg-cyan-950/80 border border-cyan-800/40 text-cyan-400 hover:bg-cyan-900/50 hover:text-white rounded-xl text-xs font-semibold transition-all">
+          <Download className="w-3.5 h-3.5" /> Export Filtered CSV
         </button>
       </div>
 
-      {/* Filters bar */}
+      <div className="flex flex-wrap gap-2">
+        {VIEWS.map((v) => (
+          <button key={v.id} onClick={() => { setView(v.id); setOffset(0); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              view === v.id ? 'bg-cyan-950/60 border-cyan-700/50 text-cyan-300' : 'border-slate-800 text-slate-400 hover:text-white'}`}>
+            {v.label}
+          </button>
+        ))}
+        {view === 'mla' && (
+          <select value={election} onChange={update(setElection)} className={`${INPUT} py-1.5 text-xs appearance-none`}>
+            <option value="">All assemblies ({assemblies.length})</option>
+            {assemblies.map((e) => <option key={e.election} value={e.election}>{e.election} · {e.count} MLAs</option>)}
+          </select>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search candidate or constituency..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
-            className="w-full pl-10 pr-4 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
-          />
+          <input type="text" placeholder="Search name or constituency..." value={search} onChange={update(setSearch)}
+            className={`w-full pl-10 pr-4 ${INPUT}`} />
         </div>
-
-        {/* State Filter */}
-        <div className="relative">
-          <select
-            value={selectedState}
-            onChange={(e) => { setSelectedState(e.target.value); setOffset(0); }}
-            className="w-full px-3.5 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 transition-all appearance-none"
-          >
-            <option value="">All States</option>
-            {states.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Party Filter */}
-        <div className="relative">
-          <select
-            value={selectedParty}
-            onChange={(e) => { setSelectedParty(e.target.value); setOffset(0); }}
-            className="w-full px-3.5 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 transition-all appearance-none"
-          >
-            <option value="">All Parties</option>
-            {parties.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Sort By Filter */}
-        <div className="relative">
-          <select
-            value={sortBy}
-            onChange={(e) => { setSortBy(e.target.value); setOffset(0); }}
-            className="w-full px-3.5 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 transition-all appearance-none"
-          >
-            <option value="">Sort (Default)</option>
-            <option value="assets">Assets: High to Low</option>
-            <option value="criminal_cases">Declared Cases: High to Low</option>
-          </select>
-        </div>
-
-        {/* Clear Filters */}
-        <button
-          onClick={() => {
-            setSearch('');
-            setSelectedParty('');
-            setSelectedState('');
-            setSortBy('');
-            setOffset(0);
-          }}
-          className="px-4 py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs transition-all"
-        >
-          Reset Filters
-        </button>
+        <select value={state} onChange={update(setState)} className={`${INPUT} appearance-none`}>
+          <option value="">All States</option>
+          {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={party} onChange={update(setParty)} className={`${INPUT} appearance-none`}>
+          <option value="">All Parties</option>
+          {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select value={sortBy} onChange={update(setSortBy)} className={`${INPUT} appearance-none`}>
+          <option value="">Sort (default)</option>
+          <option value="assets">Assets: high to low</option>
+          <option value="criminal_cases">Declared cases: high to low</option>
+        </select>
+        <button onClick={() => { setSearch(''); setParty(''); setState(''); setSortBy(''); setElection(''); setOffset(0); }}
+          className={RESET_BTN}>Reset Filters</button>
       </div>
 
-      {/* Main Table */}
       <div className="overflow-x-auto border border-slate-900 rounded-xl">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-900 bg-slate-950/40 text-[11px] font-bold tracking-wider text-slate-400">
-              <th className="p-4">Candidate Details</th>
-              <th className="p-4">Constituency & State</th>
+              <th className="p-4">Candidate</th>
+              <th className="p-4">Constituency & Election</th>
               <th className="p-4">Education</th>
-              <th className="p-4 text-center">Declared Criminal Cases</th>
-              <th className="p-4 text-right">Declared Assets</th>
-              <th className="p-4 text-right">Declared Liabilities</th>
-              <th className="p-4">Audit Citation</th>
+              <th className="p-4 text-center">Declared Cases</th>
+              <th className="p-4 text-right">Assets</th>
+              <th className="p-4 text-right">Liabilities</th>
+              <th className="p-4">Source</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-900 text-sm">
-            {loading ? (
-              <tr>
-                <td colSpan="7" className="p-8 text-center text-slate-400">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-                    Loading dossiers...
-                  </div>
-                </td>
-              </tr>
-            ) : data.length === 0 ? (
-              <tr>
-                <td colSpan="7" className="p-8 text-center text-slate-500">
-                  No matching candidate records found. If this table is empty without filters, candidate affidavits
-                  (MyNeta) have not been imported yet.
-                </td>
-              </tr>
-            ) : (
-              data.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-900/20 transition-all">
-                  <td className="p-4">
-                    <div className="font-bold text-white text-xs tracking-wide">{item.name}</div>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="w-7 h-5 flex items-center justify-center bg-cyan-950/50 border border-cyan-800/20 text-[10px] font-bold text-cyan-400 rounded">
-                        {item.party_id}
+            {isLoading ? (
+              <tr><td colSpan="7" className="p-8"><Spinner label="Loading affidavits..." /></td></tr>
+            ) : isError ? (
+              <tr><td colSpan="7" className="p-8 text-center text-red-400 text-xs">Could not load candidates. Is the API running?</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan="7" className="p-8 text-center text-slate-500">
+                No matching records. If this is empty without filters, run
+                <code className="text-slate-300"> python -m app.cli ingest-candidates</code> /
+                <code className="text-slate-300"> ingest-assemblies</code>.
+              </td></tr>
+            ) : rows.map((c) => (
+              <tr key={c.id} className="hover:bg-slate-900/20 transition-all">
+                <td className="p-4">
+                  <div className="font-bold text-white text-xs tracking-wide flex items-center gap-2">
+                    {c.name}
+                    {c.is_winner && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-950/60 border border-emerald-800/40 text-emerald-400">
+                        WON
                       </span>
-                      <span className="text-[10px] text-slate-400">{item.party_name}</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-xs font-semibold text-slate-300">{item.constituency}</div>
-                    <span className="text-[10px] text-slate-500">{item.state} ({item.year})</span>
-                  </td>
-                  <td className="p-4">
-                    <span className="text-xs text-slate-300 font-medium">{item.education}</span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className={`inline-flex items-center justify-center min-w-7 h-7 text-xs font-bold rounded-full ${
-                      item.criminal_cases > 0 
-                        ? 'bg-red-950/60 border border-red-800/40 text-red-400' 
-                        : 'bg-slate-900 border border-slate-800 text-slate-400'
-                    }`}>
-                      {item.criminal_cases}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <span className="text-emerald-400 font-bold tracking-tight">{formatINR(item.assets)}</span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <span className="text-slate-400 font-bold tracking-tight">{formatINR(item.liabilities)}</span>
-                  </td>
-                  <td className="p-4">
-                    <a
-                      href={item.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 text-[10px] text-cyan-400 hover:text-white transition-all font-semibold"
-                    >
-                      <span>{item.source_name}</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  </td>
-                </tr>
-              ))
-            )}
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-400">{c.party_name}</span>
+                </td>
+                <td className="p-4">
+                  <div className="text-xs font-semibold text-slate-300">{c.constituency}</div>
+                  <span className="text-[10px] text-slate-500">{c.state} · {c.election || c.year}</span>
+                </td>
+                <td className="p-4 text-xs text-slate-300">{c.education}</td>
+                <td className="p-4 text-center">
+                  <span className={`inline-flex items-center justify-center min-w-7 h-7 px-1 text-xs font-bold rounded-full ${
+                    c.criminal_cases > 0 ? 'bg-red-950/60 border border-red-800/40 text-red-400' : 'bg-slate-900 border border-slate-800 text-slate-400'}`}>
+                    {c.criminal_cases}
+                  </span>
+                </td>
+                <td className="p-4 text-right text-emerald-400 font-bold tracking-tight">{formatInr(c.assets)}</td>
+                <td className="p-4 text-right text-slate-400 font-bold tracking-tight">{formatInr(c.liabilities)}</td>
+                <td className="p-4">
+                  <a href={c.source_url} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-950 hover:bg-slate-900 border border-slate-800 text-[10px] text-cyan-400 hover:text-white transition-all font-semibold">
+                    MyNeta <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between text-xs text-slate-400">
-        <div>
-          Showing <span className="font-bold text-white">{Math.min(total, offset + 1)}</span> to{' '}
-          <span className="font-bold text-white">{Math.min(total, offset + limit)}</span> of{' '}
-          <span className="font-bold text-white">{total}</span> candidates
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => handlePageChange(offset - limit)}
-            disabled={offset === 0}
-            className="px-3.5 py-1.5 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:border-slate-800 disabled:hover:text-slate-300 transition-all"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => handlePageChange(offset + limit)}
-            disabled={offset + limit >= total}
-            className="px-3.5 py-1.5 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:border-slate-800 disabled:hover:text-slate-300 transition-all"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <Pagination offset={offset} limit={LIMIT} total={data?.total || 0} noun="records" onChange={setOffset} />
     </div>
   );
 }

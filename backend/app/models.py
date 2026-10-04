@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, UniqueConstraint, Index
+from sqlalchemy import Boolean, Column, Integer, String, Float, ForeignKey, DateTime, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -48,6 +48,9 @@ class Candidate(Base):
     state = Column(String, nullable=False, index=True)
     constituency = Column(String, nullable=False)
     year = Column(Integer, nullable=False, index=True) # e.g. 2024
+    election = Column(String, nullable=True, index=True)  # e.g. "Lok Sabha 2024", "Karnataka 2023"
+    house = Column(String, nullable=True, index=True)  # "Lok Sabha" | "Vidhan Sabha"
+    is_winner = Column(Boolean, nullable=True)  # None = not known
     assets = Column(Float, nullable=False) # In INR
     liabilities = Column(Float, nullable=False) # In INR
     criminal_cases = Column(Integer, nullable=False, default=0)

@@ -6,6 +6,7 @@ Data management commands. Run from backend/:
     python -m app.cli ingest-fcra          # NGO foreign contribution returns
     python -m app.cli ingest-fcra-status FILE --status Cancelled --source-url URL   # official MHA list
     python -m app.cli ingest-candidates    # Lok Sabha 2024 candidate affidavits (MyNeta)
+    python -m app.cli ingest-assemblies    # sitting MLAs: winners of each state's latest assembly election (MyNeta)
     python -m app.cli ingest-legislative   # Lok Sabha MP activity + private member bills
     python -m app.cli ingest-events        # sourced events about purchasers (data/entity_events.csv)
     python -m app.cli brief                # regenerate the AI brief
@@ -41,6 +42,11 @@ def ingest_candidates():
     print(json.dumps(run_import(), indent=2))
 
 
+def ingest_assemblies():
+    from .import_myneta import run_assembly_import
+    print(json.dumps(run_assembly_import(), indent=2))
+
+
 def ingest_events():
     from .import_events import run_import
     print(json.dumps(run_import(), indent=2))
@@ -70,6 +76,7 @@ COMMANDS = {
     "ingest-bonds": ingest_bonds,
     "ingest-fcra": ingest_fcra,
     "ingest-candidates": ingest_candidates,
+    "ingest-assemblies": ingest_assemblies,
     "ingest-legislative": ingest_legislative,
     "ingest-events": ingest_events,
     "brief": brief,
@@ -88,7 +95,7 @@ def main():
             parser.error("ingest-fcra-status needs FILE --status STATUS --source-url URL")
         ingest_fcra_status(args)
     elif args.command == "ingest-all":
-        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-legislative", "ingest-events", "brief"):
+        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-legislative", "ingest-events", "brief"):
             print(f"\n=== {name} ===")
             COMMANDS[name]()
     else:

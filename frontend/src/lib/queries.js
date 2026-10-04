@@ -9,15 +9,28 @@ export const useParties = () =>
 export const useDashboardStats = (year) =>
   useQuery({ queryKey: ['donation-stats', year], queryFn: () => apiGet('/api/v1/donations/stats', { year }) });
 
-export const useCandidateStateSummary = () =>
-  useQuery({ queryKey: ['candidate-state-summary'], queryFn: () => apiGet('/api/v1/candidates/state-summary') });
-
-export const useStateCandidates = (state) =>
+export const useCandidateStateSummary = (house = 'Lok Sabha') =>
   useQuery({
-    queryKey: ['candidates', 'state', state],
-    queryFn: () => apiGet('/api/v1/candidates', { state, sort_by: 'assets', limit: 200 }),
+    queryKey: ['candidate-state-summary', house],
+    queryFn: () => apiGet('/api/v1/candidates/state-summary', { house }),
+  });
+
+export const useStateCandidates = (state, house = 'Lok Sabha') =>
+  useQuery({
+    queryKey: ['candidates', 'state', state, house],
+    queryFn: () => apiGet('/api/v1/candidates', { state, house, sort_by: 'assets', limit: 200 }),
     enabled: !!state,
   });
+
+export const useCandidates = (params) =>
+  useQuery({
+    queryKey: ['candidates', params],
+    queryFn: () => apiGet('/api/v1/candidates', params),
+    placeholderData: keepPreviousData,
+  });
+
+export const useElections = () =>
+  useQuery({ queryKey: ['elections'], queryFn: () => apiGet('/api/v1/candidates/elections') });
 
 export const useStateNgoSummary = (state) =>
   useQuery({

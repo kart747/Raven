@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useCandidateStateSummary } from '../../lib/queries';
 import { CandidatesPanel, LegislativePanel, NgoPanel } from './DossierPanels';
 
 const TABS = [
-  { id: 'candidates', label: 'Candidates', source: 'Source: MyNeta / ADR (Lok Sabha 2024 affidavits)' },
+  { id: 'candidates', label: 'Lok Sabha', source: 'Source: MyNeta / ADR (Lok Sabha 2024 affidavits)' },
+  { id: 'mlas', label: 'MLAs', source: 'Source: MyNeta / ADR (latest assembly election affidavits)' },
   { id: 'ngos', label: 'NGO Foreign Funding', source: 'Source: FCRA annual returns (MHA)' },
   { id: 'legislative', label: 'Parliament', source: 'Source: Lok Sabha activity (Vonter dataset)' },
 ];
@@ -10,6 +12,7 @@ const TABS = [
 export default function StateDossier({ state, candidateSummary }) {
   const [tab, setTab] = useState('candidates');
   const active = TABS.find((t) => t.id === tab);
+  const { data: mlaSummary = {} } = useCandidateStateSummary('Vidhan Sabha');
 
   return (
     <div className="glass-panel rounded-2xl p-6 shadow-xl border border-slate-900 flex flex-col gap-4 min-h-[480px]">
@@ -29,13 +32,14 @@ export default function StateDossier({ state, candidateSummary }) {
 
       {state ? (
         tab === 'candidates' ? <CandidatesPanel state={state} summary={candidateSummary} />
+          : tab === 'mlas' ? <CandidatesPanel state={state} summary={mlaSummary[state]} house="Vidhan Sabha" noun="Sitting MLAs" />
           : tab === 'ngos' ? <NgoPanel state={state} />
             : <LegislativePanel state={state} />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-800 rounded-2xl bg-slate-950/30 px-6 py-10">
           <h3 className="text-sm font-bold text-slate-200">Click a state on the map</h3>
           <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-            Shows that state's Lok Sabha candidates, NGO foreign contributions, and MPs' parliamentary activity.
+            Shows that state's Lok Sabha candidates, sitting MLAs, NGO foreign contributions, and MPs' parliamentary activity.
           </p>
         </div>
       )}

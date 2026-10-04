@@ -111,12 +111,22 @@ def get_candidates(
     search: str = None,
     sort_by: str = None, # "assets", "criminal_cases"
     limit: int = 100,
-    offset: int = 0
+    offset: int = 0,
+    house: str = None,
+    election: str = None,
+    winners_only: bool = False,
 ):
     query = db.query(
         models.Candidate,
         models.Party.name.label("party_name")
     ).join(models.Party, models.Candidate.party_id == models.Party.id)
+
+    if house:
+        query = query.filter(models.Candidate.house == house)
+    if election:
+        query = query.filter(models.Candidate.election == election)
+    if winners_only:
+        query = query.filter(models.Candidate.is_winner.is_(True))
 
     if state:
         query = query.filter(models.Candidate.state.ilike(state))
@@ -150,6 +160,9 @@ def get_candidates(
             "state": candidate.state,
             "constituency": candidate.constituency,
             "year": candidate.year,
+            "election": candidate.election,
+            "house": candidate.house,
+            "is_winner": candidate.is_winner,
             "assets": candidate.assets,
             "liabilities": candidate.liabilities,
             "criminal_cases": candidate.criminal_cases,
@@ -176,7 +189,7 @@ def get_dashboard_stats(db: Session, year: int = None):
         donors_query = donors_query.filter(models.Donation.year == year)
     total_donors_count = donors_query.count()
     
-    total_candidates_count = db.query(models.Candidate).count()
+    total_candidates_count = db.query(models.Candidate).filter(models.Candidate.house == "Lok Sabha").count()
     
     # Party Shares
     party_shares_query = db.query(

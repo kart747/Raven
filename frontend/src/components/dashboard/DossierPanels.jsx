@@ -24,15 +24,15 @@ function Failed() {
   return <div className="text-center text-xs text-red-400 py-8">Could not load this panel.</div>;
 }
 
-export function CandidatesPanel({ state, summary }) {
-  const { data, isLoading, isError } = useStateCandidates(state);
+export function CandidatesPanel({ state, summary, house = 'Lok Sabha', noun = 'Candidates' }) {
+  const { data, isLoading, isError } = useStateCandidates(state, house);
   const s = summary || { candidate_count: 0, total_assets: 0, total_cases: 0, candidates_with_cases: 0 };
   const rows = data?.data || [];
 
   return (
     <div className="flex flex-col gap-4 flex-1">
       <div className={STATS}>
-        <Stat label="Candidates" value={s.candidate_count.toLocaleString('en-IN')} />
+        <Stat label={noun} value={s.candidate_count.toLocaleString('en-IN')} />
         <Stat label="Total declared assets" value={formatCrore(s.total_assets, 0)} tone="text-emerald-400" />
         <Stat label="With declared criminal cases" value={`${s.candidates_with_cases} (${s.candidate_count ? ((100 * s.candidates_with_cases) / s.candidate_count).toFixed(0) : 0}%)`} tone="text-red-400" />
         <Stat label="Cases declared (total)" value={s.total_cases.toLocaleString('en-IN')} tone="text-slate-300" />
@@ -42,11 +42,13 @@ export function CandidatesPanel({ state, summary }) {
         {isLoading ? <Loading label="Loading affidavits..." /> : isError ? <Failed /> : (
           <div className={LIST}>
             {rows.length === 0 ? (
-              <div className="text-center text-xs text-slate-500 py-4">No candidate affidavits imported for this state yet (source: MyNeta).</div>
+              <div className="text-center text-xs text-slate-500 py-4">No {noun.toLowerCase()} imported for this state (source: MyNeta).</div>
             ) : rows.map((c) => (
               <a key={c.id} href={c.source_url} target="_blank" rel="noopener noreferrer" className={`${ROW} hover:border-slate-700 transition-all`}>
                 <div>
-                  <strong className="text-white block truncate max-w-[160px]">{c.name}</strong>
+                  <strong className="text-white block truncate max-w-[160px]">
+                    {c.name}{c.is_winner && house === 'Lok Sabha' && <span className="ml-1 text-[8px] text-emerald-400">WON</span>}
+                  </strong>
                   <span className="text-[9px] text-slate-500">{c.constituency} · {c.party_name}</span>
                 </div>
                 <div className="text-right">
