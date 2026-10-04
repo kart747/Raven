@@ -28,6 +28,7 @@ def ensure_schema():
     from . import models  # noqa: F401  (registers the tables on Base.metadata)
     Base.metadata.create_all(bind=engine)
     _add_missing_columns()
+    _add_search_indexes()
     for table in Base.metadata.sorted_tables:
         for index in table.indexes:
             index.create(bind=engine, checkfirst=True)
@@ -46,3 +47,24 @@ def _add_missing_columns():
                 if column.name not in existing and column.nullable:
                     col_type = column.type.compile(dialect=engine.dialect)
                     conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN {column.name} {col_type}'))
+
+
+# Columns searched with ILIKE '%term%'. On Postgres a trigram index makes those searches use an index.
+_TRGM_COLUMNS = [
+    ("parliament_questions", "title"),
+    ("candidates", "name"),
+    ("ngos", "name"),
+    ("donors", "name"),
+]
+
+
+def _add_search_indexes():
+    if engine.dialect.name != "postgresql":
+        return
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        for table, column in _TRGM_COLUMNS:
+            conn.execute(text(
+                f"CREATE INDEX IF NOT EXISTS ix_{table}_{column}_trgm ON {table} USING gin ({column} gin_trgm_ops)"
+            ))
