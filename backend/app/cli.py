@@ -7,6 +7,7 @@ Data management commands. Run from backend/:
     python -m app.cli ingest-fcra-status FILE --status Cancelled --source-url URL   # official MHA list
     python -m app.cli ingest-candidates    # Lok Sabha 2024 candidate affidavits (MyNeta)
     python -m app.cli ingest-assemblies    # sitting MLAs: winners of each state's latest assembly election (MyNeta)
+    python -m app.cli ingest-asset-growth  # assets 2019 -> 2024 of re-contesting 2019 MPs (MyNeta)
     python -m app.cli ingest-legislative   # Lok Sabha MP activity + private member bills
     python -m app.cli ingest-questions     # Lok Sabha questions 2009-now, linked to bond purchasers
     python -m app.cli ingest-events        # sourced events about purchasers (data/entity_events.csv)
@@ -55,6 +56,11 @@ def ingest_questions():
     print(json.dumps(run_import(), indent=2))
 
 
+def ingest_asset_growth():
+    from .import_asset_growth import run_import
+    print(json.dumps(run_import(), indent=2))
+
+
 def ingest_events():
     from .import_events import run_import
     print(json.dumps(run_import(), indent=2))
@@ -95,6 +101,7 @@ COMMANDS = {
     "ingest-fcra": ingest_fcra,
     "ingest-candidates": ingest_candidates,
     "ingest-assemblies": ingest_assemblies,
+    "ingest-asset-growth": ingest_asset_growth,
     "ingest-legislative": ingest_legislative,
     "ingest-events": ingest_events,
     "ingest-questions": ingest_questions,
@@ -119,7 +126,7 @@ def main():
     elif args.command == "export-release":
         export_release(args.previous)
     elif args.command == "ingest-all":
-        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-legislative", "ingest-questions", "ingest-events", "brief"):
+        for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-asset-growth", "ingest-legislative", "ingest-questions", "ingest-events", "brief"):
             print(f"\n=== {name} ===")
             COMMANDS[name]()
     else:

@@ -903,6 +903,19 @@ def read_insights(lang: str = Query("en", pattern="^(en|hi)$"), db: Session = De
                               f"FY2020-21; the largest recipient was {top_ngo[1]} (₹{top_ngo[2] / 1e7:,.0f} Cr).",
                       "link": {"ngo": top_ngo[0]}})
 
+    growth = [(a.assets, a.previous_assets) for a in db.query(models.AssetComparison)
+              .filter(models.AssetComparison.election == "Lok Sabha 2024")]
+    if growth:
+        up = sum(n > p for n, p in growth)
+        pcts = sorted(100 * (n - p) / p for n, p in growth if p)
+        med = round(pcts[len(pcts) // 2]) if pcts else 0
+        facts.append({"id": "asset_growth", "kind": "candidates",
+                      "text": f"Of {len(growth)} MPs elected in 2019 who stood again in 2024, {up} declared more assets "
+                              f"in 2024; the median increase was {med}%.",
+                      "text_hi": f"2019 में चुने गए जिन {len(growth)} सांसदों ने 2024 में फिर चुनाव लड़ा, उनमें से {up} ने "
+                                 f"2024 में अधिक संपत्ति घोषित की; औसत (माध्यिका) वृद्धि {med}% रही।",
+                      "link": {"tab": "candidates"}})
+
     Q = models.ParliamentQuestion
     top_min = db.query(Q.ministry, func.count(Q.id)).filter(Q.lok_sabha == 18, Q.ministry.isnot(None))\
         .group_by(Q.ministry).order_by(desc(func.count(Q.id))).first()
@@ -955,6 +968,54 @@ def read_bond_flows(top: int = Query(15, ge=5, le=40), db: Session = Depends(get
     all_total = db.query(func.coalesce(amount, 0.0)).filter(*eb).scalar()
     return {"nodes": nodes, "links": links, "covered_amount": total,
             "share_of_all_bonds": round(100 * total / all_total, 1) if all_total else 0}
+
+
+# --- Declared assets, 2019 -> 2024, for 2019 MPs who stood again ---
+def _myneta_id(url: str | None) -> int | None:
+    m = re.search(r"candidate_id=(\d+)", url or "")
+    return int(m.group(1)) if m else None
+
+
+@app.get("/api/v1/asset-growth")
+def read_asset_growth(
+    sort: str = Query("increase", pattern="^(increase|pct|assets|decrease)$"),
+    result: Optional[str] = Query(None, pattern="^(won|lost)$", description="2024 result"),
+    limit: int = Query(50, ge=1, le=MAX_PAGE),
+    db: Session = Depends(get_db),
+):
+    """MyNeta's comparison of declared assets in 2019 and 2024 affidavits, joined to 2024 candidate records."""
+    C = models.Candidate
+    cands = {_myneta_id(c.source_url): c for c in db.query(C).filter(C.election == "Lok Sabha 2024")}
+    party_names = dict(db.query(models.Party.id, models.Party.name))
+    rows = []
+    for a in db.query(models.AssetComparison).filter(models.AssetComparison.election == "Lok Sabha 2024"):
+        c = cands.get(a.myneta_id)
+        won = bool(c and c.is_winner)
+        if result == "won" and not won or result == "lost" and won:
+            continue
+        rows.append({
+            "name": a.name, "party": party_names.get(c.party_id, a.party) if c else a.party,
+            "party_id": c.party_id if c else None,
+            "state": c.state if c else None, "constituency": c.constituency if c else None,
+            "won_2024": won, "assets_2024": a.assets, "assets_2019": a.previous_assets,
+            "increase": a.assets - a.previous_assets,
+            "pct": round(100 * (a.assets - a.previous_assets) / a.previous_assets, 1) if a.previous_assets else None,
+            "remarks": a.remarks, "comparison_url": a.source_url,
+        })
+    pcts = sorted(r["pct"] for r in rows if r["pct"] is not None)
+    summary = {
+        "count": len(rows),
+        "increased": sum(r["increase"] > 0 for r in rows),
+        "doubled_or_more": sum(r["pct"] is not None and r["pct"] >= 100 for r in rows),
+        "median_pct": pcts[len(pcts) // 2] if pcts else None,
+        "won_2024": sum(r["won_2024"] for r in rows),
+    }
+    key = {"increase": lambda r: r["increase"], "pct": lambda r: r["pct"] or 0,
+           "assets": lambda r: r["assets_2024"], "decrease": lambda r: -r["increase"]}[sort]
+    rows.sort(key=key, reverse=True)
+    return {"summary": summary, "rows": rows[:limit],
+            "note": "Self-declared assets in 2019 and 2024 affidavits of MPs elected in 2019 who stood again in 2024 "
+                    "(MyNeta). A change in declared assets is not by itself evidence of wrongdoing."}
 
 
 # --- Party scoreboard: one row per party across datasets ---
@@ -1104,6 +1165,10 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
             "questions": mp.questions_count, "private_member_bills": mp.bills_introduced,
             "source_url": mp.official_url,
         },
+        "asset_change_since_2019": None if not affidavit else next((
+            {"assets_2019": x.previous_assets, "assets_2024": x.assets, "comparison_url": x.source_url}
+            for x in db.query(models.AssetComparison).filter(
+                models.AssetComparison.myneta_id == _myneta_id(affidavit.source_url))), None),
         "affidavit": None if not affidavit else {
             "name_on_affidavit": affidavit.name, "election": affidavit.election, "assets": affidavit.assets,
             "liabilities": affidavit.liabilities, "criminal_cases": affidavit.criminal_cases,

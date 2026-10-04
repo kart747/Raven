@@ -24,6 +24,7 @@ const NgoDetailModal = lazy(() => import('./components/ngos/NgoDetailModal'));
 const SearchPalette = lazy(() => import('./components/SearchPalette'));
 const SeatMap = lazy(() => import('./components/SeatMap'));
 const PartyScoreboard = lazy(() => import('./components/PartyScoreboard'));
+const AssetGrowth = lazy(() => import('./components/AssetGrowth'));
 
 // Widgets available at #embed=<id> for use in <iframe>s
 const EMBEDS = {
@@ -185,7 +186,12 @@ export default function App() {
         <Suspense fallback={<div className="py-16 text-center text-xs text-slate-500">Loading…</div>}>
         {activeTab === 'parties' && <PartyScoreboard onOpenParty={setPartyId} />}
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
-        {activeTab === 'candidates' && <CandidatesTable initialFilterState={selectedState} />}
+        {activeTab === 'candidates' && (
+          <div className="flex flex-col gap-6">
+            <CandidatesTable initialFilterState={selectedState} />
+            <AssetGrowth onOpenParty={setPartyId} />
+          </div>
+        )}
         {activeTab === 'ngos' && <NgosTracker onOpenNgo={setNgoId} />}
         {activeTab === 'legislative' && <LegislativeTracker onOpenMp={setMpId} />}
         {activeTab === 'brief' && <BriefViewer />}

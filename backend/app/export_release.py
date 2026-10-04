@@ -35,6 +35,7 @@ PUBLISHED = {
     "parliament_questions": "Vonter/india-representatives-activity (ODbL-1.0), from sansad.in",
     "question_mentions": "Raven exact-name matches of purchasers in question titles",
     "entity_events": "Curated, source-cited events (data/entity_events.csv)",
+    "asset_comparisons": "MyNeta / ADR re-contest asset comparison (Lok Sabha 2019 vs 2024 affidavits)",
 }
 
 

@@ -123,3 +123,6 @@ export const useLokSabhaSeats = () =>
 
 export const usePartyScoreboard = () =>
   useQuery({ queryKey: ['party-scoreboard'], queryFn: () => apiGet('/api/v1/parties/scoreboard') });
+
+export const useAssetGrowth = (params) =>
+  useQuery({ queryKey: ['asset-growth', params], queryFn: () => apiGet('/api/v1/asset-growth', params), placeholderData: keepPreviousData });

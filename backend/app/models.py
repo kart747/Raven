@@ -235,3 +235,21 @@ class QuestionMention(Base):
     question_id = Column(Integer, ForeignKey("parliament_questions.id"), nullable=False, index=True)
     donor_name = Column(String, nullable=False, index=True)  # canonical purchaser name
     matched_text = Column(String, nullable=False)
+
+
+class AssetComparison(Base):
+    """Declared assets of a candidate in two elections (MyNeta's re-contest comparison)."""
+    __tablename__ = "asset_comparisons"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    election = Column(String, nullable=False, index=True)          # e.g. "Lok Sabha 2024"
+    previous_election = Column(String, nullable=False)              # e.g. "Lok Sabha 2019"
+    myneta_id = Column(Integer, nullable=False, index=True)         # candidate id in the later election
+    previous_myneta_id = Column(Integer, nullable=True)
+    name = Column(String, nullable=False)
+    party = Column(String, nullable=True)
+    assets = Column(Float, nullable=False)
+    previous_assets = Column(Float, nullable=False)
+    remarks = Column(String, nullable=True)
+    source_url = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

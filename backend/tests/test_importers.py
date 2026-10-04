@@ -171,7 +171,7 @@ from app.main import app
 paths = ["/api/v1/parties", "/api/v1/parties/scoreboard", "/api/v1/donations", "/api/v1/donations/stats", "/api/v1/candidates",
          "/api/v1/candidates/state-summary", "/api/v1/candidates/elections", "/api/v1/ngos",
          "/api/v1/ngos/stats", "/api/v1/ngos/state-totals", "/api/v1/mp-activity/stats", "/api/v1/questions",
-         "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows", "/api/v1/seats/lok-sabha-2024",
+         "/api/v1/questions/stats", "/api/v1/questions/ministries", "/api/v1/bonds/flows", "/api/v1/seats/lok-sabha-2024", "/api/v1/asset-growth",
          "/api/v1/search?q=ab", "/api/v1/insights", "/api/v1/data-quality", "/api/v1/brief/latest", "/api/v1/sources"]
 with TestClient(app) as client:
     bad = [(p, client.get(p).status_code) for p in paths]
@@ -292,3 +292,17 @@ def test_release_diff_reports_changed_new_and_removed_tables():
     assert "ngos" not in changes                       # unchanged
     assert changes["parliament_questions"]["status"] == "new"
     assert changes["old"]["status"] == "removed"
+
+
+def test_asset_comparison_parsing():
+    from app.import_asset_growth import parse_amount, parse_page
+    assert parse_amount("4,35,49,09,793 435\xa0Crore+") == 4354909793
+    html = """<table><tr><th>Sno</th><th>Name (Party)</th><th>Total Assets in Lok Sabha 2024</th>
+      <th>Total Assets in Lok Sabha 2019</th><th>Asset Increase</th><th>% Increase in Asset</th><th>Remarks</th></tr>
+      <tr><td>1</td><td><a href="index.php?action=affidavitComparison&myneta_folder2=LokSabha2019&id1=5225&id2=4846">
+      Dr Gaddam Ranjith Reddy (INC)</a></td><td>4,35,49,09,793 435 Crore+</td><td>1,63,46,95,131 163 Crore+</td>
+      <td>2,72,02,14,662</td><td>166%</td><td>Party in last election was TRS</td></tr></table>"""
+    [r] = parse_page(html)
+    assert (r["myneta_id"], r["previous_myneta_id"], r["party"]) == (5225, 4846, "INC")
+    assert r["name"] == "Dr Gaddam Ranjith Reddy" and r["previous_assets"] == 1634695131
+    assert r["remarks"] == "Party in last election was TRS"

@@ -52,6 +52,16 @@ export default function MpProfile({ mpId, onClose, onOpenParty }) {
                   {m.affidavit ? (
                     <div className="text-xs space-y-1.5">
                       <div className="flex justify-between"><span className="text-slate-400">Declared assets</span><span className="text-emerald-400 font-bold">{formatCrore(m.affidavit.assets)}</span></div>
+                      {m.asset_change_since_2019 && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Declared in 2019</span>
+                          <a href={m.asset_change_since_2019.comparison_url} target="_blank" rel="noopener noreferrer" className="text-slate-200 hover:text-cyan-400">
+                            {formatCrore(m.asset_change_since_2019.assets_2019)} ({m.asset_change_since_2019.assets_2019
+                              ? `${m.asset_change_since_2019.assets_2024 >= m.asset_change_since_2019.assets_2019 ? '+' : ''}${Math.round(100 * (m.asset_change_since_2019.assets_2024 - m.asset_change_since_2019.assets_2019) / m.asset_change_since_2019.assets_2019)}% since`
+                              : 'n/a'})
+                          </a>
+                        </div>
+                      )}
                       <div className="flex justify-between"><span className="text-slate-400">Declared liabilities</span><span className="text-slate-200">{formatCrore(m.affidavit.liabilities)}</span></div>
                       <div className="flex justify-between"><span className="text-slate-400">Pending criminal cases declared</span>
                         <span className={m.affidavit.criminal_cases ? 'text-red-400 font-bold' : 'text-slate-200'}>{m.affidavit.criminal_cases}</span></div>
