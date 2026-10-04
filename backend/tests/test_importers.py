@@ -208,3 +208,72 @@ def test_lok_sabha_by_elections_are_separate_elections():
     from app.import_myneta import split_region
     assert split_region("UTTAR PRADESH") == ("Uttar Pradesh", "Lok Sabha 2024", 2024)
     assert split_region("Bye Election On 13-11-2024 : Kerala") == ("Kerala", "Lok Sabha by-election 2024-11-13", 2024)
+
+
+def test_cross_dataset_endpoints_on_fixture_data(tmp_path):
+    """Profiles, key facts, flows and map summaries return the right values on a small fixture database."""
+    import os
+    import subprocess
+    import sys
+    script = r"""
+import datetime
+from fastapi.testclient import TestClient
+from app.database import SessionLocal, ensure_schema
+from app import models as m
+
+ensure_schema()
+db = SessionLocal()
+now = datetime.datetime.utcnow()
+db.add_all([
+    m.Party(id="AAA", name="Alpha Party"), m.Party(id="Alpha Party", name="Alpha Party"),  # same name, two IDs
+    m.Party(id="BBB", name="Beta Party"),
+    m.Donor(id=1, name="ACME INDUSTRIES LIMITED", industry="Unknown"),
+    m.Donor(id=2, name="UNKNOWN DONOR", industry="Unknown"),
+])
+for i, (donor, party, amt) in enumerate([(1, "AAA", 3e7), (1, "BBB", 1e7), (2, "AAA", 1e7)]):
+    db.add(m.Donation(donor_id=donor, party_id=party, amount=amt, date="2022-04-0%d" % (i + 1), year=2022,
+                      funding_type="Electoral Bond", source_name="t", source_url="t"))
+base = dict(assets=5e7, liabilities=0, education="Graduate", source_name="t", source_url="t", year=2024, house="Lok Sabha")
+db.add_all([
+    m.Candidate(name="Asha Rao", party_id="AAA", state="Kerala", constituency="Kurnool", election="Lok Sabha 2024",
+                is_winner=True, criminal_cases=2, **base),
+    m.Candidate(name="Ravi Rao", party_id="BBB", state="Kerala", constituency="Kurnool", election="Lok Sabha 2024",
+                is_winner=False, criminal_cases=0, **base),
+    m.Candidate(name="New Member", party_id="AAA", state="Kerala", constituency="Kurnool",
+                election="Lok Sabha by-election 2024-11-13", is_winner=True, criminal_cases=0, **base),
+])
+db.add(m.MPActivity(mp_name="New Member", constituency="Kurnoolu", party_name="Alpha Party",
+                    state_represented="Kerala", attendance_pct=90.0, debates_count=1, questions_count=2,
+                    bills_introduced=0, official_url="t"))
+db.add(m.ParliamentQuestion(lok_sabha=18, date="2024-12-01", title="Acme Industries contracts", question_type="Unstarred",
+                            ministry="Mines", representative="New Member", official_url="t", source_url="t"))
+db.commit()
+mp_id = db.query(m.MPActivity.id).scalar()
+
+with TestClient(app_module.app) as c:
+    mp = c.get(f"/api/v1/mps/{mp_id}/profile").json()
+    assert mp["party_id"] == "AAA", mp["party_id"]                       # duplicate party name resolved
+    assert mp["affidavit"]["name_on_affidavit"] == "New Member", mp      # by-election winner, fuzzy seat name
+    assert mp["questions_total"] == 1
+
+    party = c.get("/api/v1/parties/AAA/profile").json()
+    assert party["bonds"]["total"] == 4e7 and party["bonds"]["undisclosed_purchaser_amount"] == 1e7
+    assert party["lok_sabha_2024"]["winners"] == 1                       # by-election not counted as 2024 win
+
+    facts = {f["id"]: f["text"] for f in c.get("/api/v1/insights").json()}
+    assert "80%" in facts["top_party"], facts["top_party"]               # 4 of 5 crore
+    assert "100% of Lok Sabha MPs" in facts["mp_cases"], facts["mp_cases"]
+
+    flows = c.get("/api/v1/bonds/flows").json()
+    assert {l["party_name"] for l in flows["links"]} == {"Alpha Party", "Beta Party"}
+    assert all(n["name"] != "UNKNOWN DONOR" for n in flows["nodes"])
+
+    summary = c.get("/api/v1/candidates/state-summary").json()
+    assert summary["Kerala"]["candidate_count"] == 2                     # general election only
+print("ok")
+"""
+    script = script.replace("from fastapi.testclient import TestClient", "from fastapi.testclient import TestClient\nimport app.main as app_module")
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{tmp_path / 'fixture.db'}", "GROQ_API_KEY": ""}
+    backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr[-3000:]
