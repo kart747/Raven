@@ -12,7 +12,7 @@ const STATUS_COLORS = {
   low: 'bg-red-950/60 border-red-800/40 text-red-400',
 };
 
-export default function LegislativeTracker() {
+export default function LegislativeTracker({ onOpenMp }) {
   // Global States
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -225,7 +225,7 @@ export default function LegislativeTracker() {
                 stats.low_attendance_outliers.map((mp) => (
                   <div key={mp.id} className="py-3 flex items-center justify-between gap-2 text-xs">
                     <div className="space-y-0.5">
-                      <strong className="text-white block">{mp.mp_name}</strong>
+                      <button onClick={() => onOpenMp?.(mp.id)} className="text-white font-bold block hover:text-cyan-400 text-left">{mp.mp_name}</button>
                       <span className="text-[9px] text-slate-500 block">{mp.constituency} ({mp.party_name}) | {mp.state_represented}</span>
                     </div>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950/60 border border-red-800/40 text-red-400">
@@ -255,7 +255,7 @@ export default function LegislativeTracker() {
                 stats.top_debates_outliers.map((mp) => (
                   <div key={mp.id} className="py-3 flex items-center justify-between gap-2 text-xs">
                     <div className="space-y-0.5">
-                      <strong className="text-white block">{mp.mp_name}</strong>
+                      <button onClick={() => onOpenMp?.(mp.id)} className="text-white font-bold block hover:text-cyan-400 text-left">{mp.mp_name}</button>
                       <span className="text-[9px] text-slate-500 block">{mp.constituency} ({mp.party_name}) | {mp.state_represented}</span>
                     </div>
                     <div className="text-right">
@@ -286,7 +286,7 @@ export default function LegislativeTracker() {
                 stats.top_questions_outliers.map((mp) => (
                   <div key={mp.id} className="py-3 flex items-center justify-between gap-2 text-xs">
                     <div className="space-y-0.5">
-                      <strong className="text-white block">{mp.mp_name}</strong>
+                      <button onClick={() => onOpenMp?.(mp.id)} className="text-white font-bold block hover:text-cyan-400 text-left">{mp.mp_name}</button>
                       <span className="text-[9px] text-slate-500 block">{mp.constituency} ({mp.party_name}) | {mp.state_represented}</span>
                     </div>
                     <div className="text-right">
@@ -438,7 +438,7 @@ export default function LegislativeTracker() {
                   return (
                     <tr key={mp.id} className="hover:bg-slate-900/20 transition-all">
                       <td className="p-4">
-                        <span className="font-bold text-white text-xs tracking-wide block">{mp.mp_name}</span>
+                        <button onClick={() => onOpenMp?.(mp.id)} className="font-bold text-white text-xs tracking-wide block hover:text-cyan-400 text-left">{mp.mp_name}</button>
                         <span className="text-[10px] text-slate-500">Constituency: {mp.constituency} | Party: {mp.party_name}</span>
                       </td>
                       <td className="p-4">

@@ -10,6 +10,7 @@ import Sources from './components/Sources';
 import BriefViewer from './components/BriefViewer';
 import DonorProfile from './components/DonorProfile';
 import PartyProfile from './components/PartyProfile';
+import MpProfile from './components/MpProfile';
 import NgoDetailModal from './components/ngos/NgoDetailModal';
 import SearchPalette from './components/SearchPalette';
 import useHashParams from './lib/useHashParams';
@@ -37,11 +38,13 @@ export default function App() {
   const donorId = hash.donor ? Number(hash.donor) : null;
   const ngoId = hash.ngo ? Number(hash.ngo) : null;
   const partyId = hash.party || null;
+  const mpId = hash.mp ? Number(hash.mp) : null;
   const setActiveTab = (tab) => setHash({ tab: tab === 'dashboard' ? null : tab });
   const setSelectedState = (state) => setHash({ state });
   const setDonorId = (id) => setHash({ donor: id });
   const setNgoId = (id) => setHash({ ngo: id });
   const setPartyId = (id) => setHash({ party: id });
+  const setMpId = (id) => setHash({ mp: id });
 
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
@@ -116,7 +119,7 @@ export default function App() {
                 <IndiaMap selectedState={selectedState} onSelectState={setSelectedState} stateStats={stateStats} />
               </div>
               <div className="lg:col-span-5">
-                <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} />
+                <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} onOpenMp={setMpId} />
               </div>
             </div>
           </div>
@@ -125,7 +128,7 @@ export default function App() {
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
         {activeTab === 'candidates' && <CandidatesTable initialFilterState={selectedState} />}
         {activeTab === 'ngos' && <NgosTracker onOpenNgo={setNgoId} />}
-        {activeTab === 'legislative' && <LegislativeTracker />}
+        {activeTab === 'legislative' && <LegislativeTracker onOpenMp={setMpId} />}
         {activeTab === 'brief' && <BriefViewer />}
         {activeTab === 'sources' && <Sources />}
       </main>
@@ -133,12 +136,14 @@ export default function App() {
       <DonorProfile donorId={donorId} onClose={() => setDonorId(null)} onOpenParty={(id) => setHash({ donor: null, party: id })} />
       <PartyProfile partyId={partyId} onClose={() => setPartyId(null)} onOpenDonor={(id) => setHash({ party: null, donor: id })} />
       <NgoDetailModal ngoId={ngoId} onClose={() => setNgoId(null)} />
+      <MpProfile mpId={mpId} onClose={() => setMpId(null)} onOpenParty={(id) => setHash({ mp: null, party: id })} />
       <SearchPalette
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onOpenDonor={setDonorId}
         onOpenNgo={setNgoId}
         onOpenState={(state) => setHash({ tab: null, state })}
+        onOpenMp={setMpId}
         onOpenParty={setPartyId}
       />
 

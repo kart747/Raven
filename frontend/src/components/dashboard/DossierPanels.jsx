@@ -110,7 +110,7 @@ const BILL_COLORS = {
   Pending: 'bg-amber-950/60 border-amber-800/40 text-amber-400',
 };
 
-export function LegislativePanel({ state }) {
+export function LegislativePanel({ state, onOpenMp }) {
   const { data: s, isLoading, isError } = useStateLegislative(state);
   if (isLoading) return <Loading label="Loading parliamentary activity..." />;
   if (isError || !s) return <Failed />;
@@ -127,7 +127,7 @@ export function LegislativePanel({ state }) {
           {s.mps.length === 0 ? <div className="text-center text-xs text-slate-500 py-4">No MPs for this state.</div> : s.mps.map((mp) => (
             <div key={mp.id} className={ROW}>
               <div>
-                <strong className="text-white block truncate max-w-[160px]" title={mp.mp_name}>{mp.mp_name}</strong>
+                <button onClick={() => onOpenMp?.(mp.id)} className="text-white hover:text-cyan-400 font-bold block truncate max-w-[160px] text-left" title={mp.mp_name}>{mp.mp_name}</button>
                 <span className="text-[9px] text-slate-500">{mp.constituency} | {mp.party_name}</span>
               </div>
               <div className="text-right">

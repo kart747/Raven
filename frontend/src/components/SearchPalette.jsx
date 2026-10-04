@@ -31,7 +31,7 @@ function describe(group, item) {
 }
 
 /** Search across every dataset. Opens with the header button or the "/" key. */
-export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty }) {
+export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty, onOpenMp }) {
   const [q, setQ] = useState('');
   const input = useRef(null);
   const debounced = useDebounced(q, 250);
@@ -49,7 +49,7 @@ export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, o
     if (group === 'parties') onOpenParty(item.id);
     else if (group === 'purchasers') onOpenDonor(item.id);
     else if (group === 'ngos') onOpenNgo(item.id);
-    else if (group === 'mps') onOpenState(item.state);
+    else if (group === 'mps') onOpenMp(item.id);
     else return; // candidates and questions are links to the source
     onClose();
   };

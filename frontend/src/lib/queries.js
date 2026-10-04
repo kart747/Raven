@@ -111,3 +111,6 @@ export const useCandidateParties = (params) =>
 
 export const useInsights = () =>
   useQuery({ queryKey: ['insights'], queryFn: () => apiGet('/api/v1/insights') });
+
+export const useMpProfile = (id) =>
+  useQuery({ queryKey: ['mp', id], queryFn: () => apiGet(`/api/v1/mps/${id}/profile`), enabled: id != null });

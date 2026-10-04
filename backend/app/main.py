@@ -2,6 +2,7 @@ import csv
 import json
 import logging
 import os
+import re
 import secrets
 import threading
 import time
@@ -953,6 +954,55 @@ def read_party_profile(party_id: str, db: Session = Depends(get_db)):
             "Bond totals are encashments into this party's accounts (Apr 2019 - Feb 2024).",
             "Representatives are matched by MyNeta's party label; post-split factions are separate parties.",
             "'Declaring cases' means pending criminal cases declared in the affidavit, not convictions.",
+        ],
+    }
+
+
+# --- MP profile: affidavit + parliamentary record ---
+def _seat_key(constituency: str | None) -> str:
+    """Constituency name normalised for matching across sources ('Bastar (ST)' == 'BASTAR')."""
+    return re.sub(r"[^a-z]", "", re.sub(r"\((sc|st)\)", "", (constituency or "").lower()))
+
+
+@app.get("/api/v1/mps/{mp_id}/profile")
+def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
+    mp = db.get(models.MPActivity, mp_id)
+    if not mp:
+        raise HTTPException(status_code=404, detail="MP not found")
+    C, Q = models.Candidate, models.ParliamentQuestion
+
+    # One MP per seat, so the 2024 winner in the same state and constituency is this MP's affidavit
+    affidavit = next((c for c in db.query(C).filter(C.house == "Lok Sabha", C.is_winner.is_(True), C.state == mp.state_represented)
+                      if _seat_key(c.constituency) == _seat_key(mp.constituency)), None)
+    q = db.query(Q).filter(Q.representative == mp.mp_name)
+    by_ministry = db.query(Q.ministry, func.count(Q.id)).filter(Q.representative == mp.mp_name)\
+        .group_by(Q.ministry).order_by(desc(func.count(Q.id))).limit(8).all()
+    bills = db.query(models.LegislativeBill).filter(models.LegislativeBill.introduced_by == mp.mp_name)\
+        .order_by(desc(models.LegislativeBill.introduced_on)).all()
+    party = db.query(models.Party.id).filter(models.Party.name == mp.party_name).scalar()
+
+    return {
+        "id": mp.id, "name": mp.mp_name, "party": mp.party_name, "party_id": party,
+        "constituency": mp.constituency, "state": mp.state_represented,
+        "activity": {
+            "attendance_pct": mp.attendance_pct, "debates": mp.debates_count,
+            "questions": mp.questions_count, "private_member_bills": mp.bills_introduced,
+            "source_url": mp.official_url,
+        },
+        "affidavit": None if not affidavit else {
+            "name_on_affidavit": affidavit.name, "election": affidavit.election, "assets": affidavit.assets,
+            "liabilities": affidavit.liabilities, "criminal_cases": affidavit.criminal_cases,
+            "education": affidavit.education, "source_url": affidavit.source_url,
+        },
+        "questions_total": q.order_by(None).count(),
+        "questions_by_ministry": [{"ministry": m, "count": n} for m, n in by_ministry],
+        "recent_questions": [_question_dict(x) for x in q.order_by(desc(Q.date)).limit(30)],
+        "bills": [{"title": b.bill_title, "status": b.current_status, "introduced_on": b.introduced_on,
+                   "official_url": b.official_url} for b in bills],
+        "notes": [
+            "Affidavit matched by constituency and state (one MP per seat).",
+            "Questions cover the 15th-18th Lok Sabha where this member's name matches.",
+            "'Criminal cases' are pending cases declared in the affidavit, not convictions.",
         ],
     }
 

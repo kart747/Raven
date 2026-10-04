@@ -9,7 +9,7 @@ const TABS = [
   { id: 'legislative', label: 'Parliament', source: 'Source: Lok Sabha activity (Vonter dataset)' },
 ];
 
-export default function StateDossier({ state, candidateSummary }) {
+export default function StateDossier({ state, candidateSummary, onOpenMp }) {
   const [tab, setTab] = useState('candidates');
   const active = TABS.find((t) => t.id === tab);
   const { data: mlaSummary = {} } = useCandidateStateSummary('Vidhan Sabha');
@@ -34,7 +34,7 @@ export default function StateDossier({ state, candidateSummary }) {
         tab === 'candidates' ? <CandidatesPanel state={state} summary={candidateSummary} />
           : tab === 'mlas' ? <CandidatesPanel state={state} summary={mlaSummary[state]} house="Vidhan Sabha" noun="Sitting MLAs" />
           : tab === 'ngos' ? <NgoPanel state={state} />
-            : <LegislativePanel state={state} />
+            : <LegislativePanel state={state} onOpenMp={onOpenMp} />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-800 rounded-2xl bg-slate-950/30 px-6 py-10">
           <h3 className="text-sm font-bold text-slate-200">Click a state on the map</h3>
