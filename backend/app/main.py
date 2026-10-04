@@ -265,6 +265,27 @@ def read_candidate_elections(db: Session = Depends(get_db)):
     return sorted(elections.values(), key=lambda e: (-e["year"], e["election"]))
 
 
+@app.get("/api/v1/candidates/parties")
+def read_candidate_parties(
+    house: Optional[str] = Query(None),
+    election: Optional[str] = Query(None),
+    winners_only: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """Parties that have candidates in the given view, largest first (for filters)."""
+    C = models.Candidate
+    n = func.count(C.id)
+    q = db.query(models.Party.id, models.Party.name, n).join(C, C.party_id == models.Party.id)
+    if house:
+        q = q.filter(C.house == house)
+    if election:
+        q = q.filter(C.election == election)
+    if winners_only:
+        q = q.filter(C.is_winner.is_(True))
+    return [{"id": i, "name": name, "count": c}
+            for i, name, c in q.group_by(models.Party.id, models.Party.name).order_by(desc(n), models.Party.name)]
+
+
 @app.get("/api/v1/candidates/state-summary")
 def read_candidate_state_summary(
     house: str = Query("Lok Sabha", description="'Lok Sabha' (all candidates) or 'Vidhan Sabha' (sitting MLAs)"),

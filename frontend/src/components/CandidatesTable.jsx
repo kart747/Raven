@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Award, Download, ExternalLink, Search } from 'lucide-react';
 import { apiUrl } from '../api';
 import { formatInr } from '../lib/format';
-import { useCandidates, useElections } from '../lib/queries';
+import { useCandidateParties, useCandidates, useElections } from '../lib/queries';
 import { STATES } from '../lib/states';
 import { INPUT, RESET_BTN } from './ngos/constants';
 import Pagination from './ui/Pagination';
@@ -15,7 +15,7 @@ const VIEWS = [
   { id: 'mla', label: 'Sitting MLAs (latest assembly elections)', params: { house: 'Vidhan Sabha' } },
 ];
 
-export default function CandidatesTable({ parties, initialFilterState }) {
+export default function CandidatesTable({ initialFilterState }) {
   const [view, setView] = useState('ls');
   const [election, setElection] = useState('');
   const [search, setSearch] = useState('');
@@ -35,6 +35,8 @@ export default function CandidatesTable({ parties, initialFilterState }) {
     search, party_id: party, state, sort_by: sortBy,
   };
   const { data, isLoading, isError } = useCandidates({ ...filters, limit: LIMIT, offset });
+  const { house, winners_only: winnersOnly, election: electionFilter } = filters;
+  const { data: parties = [] } = useCandidateParties({ house, winners_only: winnersOnly, election: electionFilter });
   const rows = data?.data || [];
   const update = (setter) => (e) => { setter(e.target.value); setOffset(0); };
 
@@ -84,7 +86,7 @@ export default function CandidatesTable({ parties, initialFilterState }) {
         </select>
         <select value={party} onChange={update(setParty)} className={`${INPUT} appearance-none`}>
           <option value="">All Parties</option>
-          {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {parties.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.count})</option>)}
         </select>
         <select value={sortBy} onChange={update(setSortBy)} className={`${INPUT} appearance-none`}>
           <option value="">Sort (default)</option>

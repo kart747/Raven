@@ -121,7 +121,7 @@ export default function App() {
         )}
 
         {activeTab === 'donations' && <DonationsTable parties={parties} onOpenDonor={setDonorId} />}
-        {activeTab === 'candidates' && <CandidatesTable parties={parties} initialFilterState={selectedState} />}
+        {activeTab === 'candidates' && <CandidatesTable initialFilterState={selectedState} />}
         {activeTab === 'ngos' && <NgosTracker onOpenNgo={setNgoId} />}
         {activeTab === 'legislative' && <LegislativeTracker />}
         {activeTab === 'brief' && <BriefViewer />}
