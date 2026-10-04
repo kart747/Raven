@@ -43,7 +43,7 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 
 - ✅ **Seat-level map** of all 543 Lok Sabha seats joined to 2024 winners and MP profiles (`#map=seats`, embeddable).
 - ✅ **Party scoreboard** across bonds, Lok Sabha and assemblies.
-- ✅ **Declared-asset change 2019 → 2024** for re-contesting MPs (`ingest-asset-growth`).
+- ✅ **Declared-asset change** for re-contesting MPs and MLAs in 25 assemblies (`ingest-asset-growth`).
 - ⏸ **Assembly seat map:** DataMeet's assembly boundaries are pre-delimitation for several states and have known shifts and
   name errors, so they are not used until a better source exists.
 

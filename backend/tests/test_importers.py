@@ -306,3 +306,6 @@ def test_asset_comparison_parsing():
     assert (r["myneta_id"], r["previous_myneta_id"], r["party"]) == (5225, 4846, "INC")
     assert r["name"] == "Dr Gaddam Ranjith Reddy" and r["previous_assets"] == 1634695131
     assert r["remarks"] == "Party in last election was TRS"
+    from app.import_asset_growth import election_label
+    assert election_label("LokSabha2019") == "Lok Sabha 2019"
+    assert election_label("karnataka2018", "Karnataka") == "Karnataka 2018"

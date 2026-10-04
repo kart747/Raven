@@ -1,8 +1,9 @@
 """
-Declared-asset changes for MPs elected in 2019 who stood again in 2024.
+Declared-asset changes for members who stood again: MPs elected in 2019 who contested 2024, and for each
+state's latest assembly election, MLAs from the previous assembly who contested again.
 
-Source: MyNeta (ADR) "Asset comparison for re-contest winners", Lok Sabha 2024. Each row links the
-candidate's 2024 and 2019 affidavits (id1 / id2), which are stored so the comparison can be checked.
+Source: MyNeta (ADR) "Asset comparison for re-contest winners". Each row links the candidate's two
+affidavits (id1 / id2), which are stored so the comparison can be checked.
 Figures are self-declared; MyNeta's remarks (e.g. party changes) are kept as published.
 
     python -m app.cli ingest-asset-growth
@@ -14,11 +15,11 @@ from urllib.parse import parse_qs, urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from .database import SessionLocal, ensure_schema
-from .import_myneta import fetch
+from .import_myneta import fetch, latest_assemblies
+from .states import canonical_state
 from . import models
 
-URL = "https://myneta.info/LokSabha2024/index.php?action=recontestAssetsComparison"
-ELECTION, PREVIOUS = "Lok Sabha 2024", "Lok Sabha 2019"
+COMPARISON = "https://myneta.info/{slug}/index.php?action=recontestAssetsComparison"
 
 
 def parse_amount(text: str) -> float | None:
@@ -27,7 +28,7 @@ def parse_amount(text: str) -> float | None:
     return float(m.group(1).replace(",", "")) if m else None
 
 
-def parse_page(html: str) -> list[dict]:
+def parse_page(html: str, base_url: str = COMPARISON.format(slug="LokSabha2024")) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     table = next((t for t in soup.find_all("table") if "Asset Increase" in t.get_text()), None)
     if table is None:
@@ -50,23 +51,51 @@ def parse_page(html: str) -> list[dict]:
             "name": name.strip(), "party": party,
             "assets": now, "previous_assets": before,
             "remarks": cells[6] if len(cells) > 6 and cells[6] else None,
-            "source_url": urljoin(URL, link["href"]),
+            "source_url": urljoin(base_url, link["href"]),
+            "previous_slug": qs.get("myneta_folder2", [None])[0],
         })
     return out
 
 
-def run_import() -> dict:
-    ensure_schema()
-    rows = parse_page(fetch(URL))
+def election_label(slug: str | None, state: str | None = None) -> str | None:
+    """'LokSabha2019' -> 'Lok Sabha 2019'; 'karnataka2018' -> 'Karnataka 2018' (state given) ."""
+    m = re.match(r"([A-Za-z_]+?)(\d{4})$", slug or "")
+    if not m:
+        return None
+    if m.group(1).lower() in ("loksabha", "ls"):
+        return f"Lok Sabha {m.group(2)}"
+    return f"{state or m.group(1).title()} {m.group(2)}"
+
+
+def _store(election: str, rows: list[dict], state: str | None) -> None:
     db = SessionLocal()
     try:
-        db.query(models.AssetComparison).filter(models.AssetComparison.election == ELECTION).delete(synchronize_session=False)
+        db.query(models.AssetComparison).filter(models.AssetComparison.election == election).delete(synchronize_session=False)
         now = datetime.datetime.utcnow()
-        db.bulk_insert_mappings(models.AssetComparison, [
-            {**r, "election": ELECTION, "previous_election": PREVIOUS, "created_at": now} for r in rows
-        ])
+        db.bulk_insert_mappings(models.AssetComparison, [{
+            **{k: v for k, v in r.items() if k != "previous_slug"},
+            "election": election,
+            "previous_election": election_label(r.get("previous_slug"), state) or "previous election",
+            "created_at": now,
+        } for r in rows])
         db.commit()
     finally:
         db.close()
-    grew = sum(r["assets"] > r["previous_assets"] for r in rows)
-    return {"comparisons": len(rows), "assets_increased": grew, "assets_decreased_or_same": len(rows) - grew}
+
+
+def run_import(assemblies: bool = True) -> dict:
+    ensure_schema()
+    targets = [("LokSabha2024", "Lok Sabha 2024", None)]
+    if assemblies:
+        for state_label, slug in sorted(latest_assemblies().items()):
+            state = canonical_state(state_label)
+            year = re.search(r"(\d{4})", slug).group(1)
+            targets.append((slug, f"{state} {year}", state))
+    report = {}
+    for slug, election, state in targets:
+        url = COMPARISON.format(slug=slug)
+        rows = parse_page(fetch(url), base_url=url)
+        if rows:
+            _store(election, rows, state)
+        report[election] = {"comparisons": len(rows), "assets_increased": sum(r["assets"] > r["previous_assets"] for r in rows)}
+    return {"elections": len(report), "comparisons": sum(r["comparisons"] for r in report.values()), "by_election": report}

@@ -126,3 +126,6 @@ export const usePartyScoreboard = () =>
 
 export const useAssetGrowth = (params) =>
   useQuery({ queryKey: ['asset-growth', params], queryFn: () => apiGet('/api/v1/asset-growth', params), placeholderData: keepPreviousData });
+
+export const useAssetGrowthElections = () =>
+  useQuery({ queryKey: ['asset-growth-elections'], queryFn: () => apiGet('/api/v1/asset-growth/elections') });

@@ -976,28 +976,40 @@ def _myneta_id(url: str | None) -> int | None:
     return int(m.group(1)) if m else None
 
 
+@app.get("/api/v1/asset-growth/elections")
+def read_asset_growth_elections(db: Session = Depends(get_db)):
+    A = models.AssetComparison
+    return [{"election": e, "previous_election": p, "count": n} for e, p, n in
+            db.query(A.election, A.previous_election, func.count(A.id)).group_by(A.election, A.previous_election)
+            .order_by(desc(A.election == "Lok Sabha 2024"), A.election)]
+
+
 @app.get("/api/v1/asset-growth")
 def read_asset_growth(
     sort: str = Query("increase", pattern="^(increase|pct|assets|decrease)$"),
+    election: str = Query("Lok Sabha 2024"),
     result: Optional[str] = Query(None, pattern="^(won|lost)$", description="2024 result"),
     limit: int = Query(50, ge=1, le=MAX_PAGE),
     db: Session = Depends(get_db),
 ):
     """MyNeta's comparison of declared assets in 2019 and 2024 affidavits, joined to 2024 candidate records."""
     C = models.Candidate
-    cands = {_myneta_id(c.source_url): c for c in db.query(C).filter(C.election == "Lok Sabha 2024")}
+    cands = {_myneta_id(c.source_url): c for c in db.query(C).filter(C.election == election)}
     party_names = dict(db.query(models.Party.id, models.Party.name))
     rows = []
-    for a in db.query(models.AssetComparison).filter(models.AssetComparison.election == "Lok Sabha 2024"):
+    comparisons = db.query(models.AssetComparison).filter(models.AssetComparison.election == election).all()
+    previous = comparisons[0].previous_election if comparisons else None
+    for a in comparisons:
         c = cands.get(a.myneta_id)
+        # Assembly records hold winners only, so a match there means re-elected
         won = bool(c and c.is_winner)
-        if result == "won" and not won or result == "lost" and won:
+        if (result == "won" and not won) or (result == "lost" and won):
             continue
         rows.append({
             "name": a.name, "party": party_names.get(c.party_id, a.party) if c else a.party,
             "party_id": c.party_id if c else None,
             "state": c.state if c else None, "constituency": c.constituency if c else None,
-            "won_2024": won, "assets_2024": a.assets, "assets_2019": a.previous_assets,
+            "won": won, "assets_now": a.assets, "assets_before": a.previous_assets,
             "increase": a.assets - a.previous_assets,
             "pct": round(100 * (a.assets - a.previous_assets) / a.previous_assets, 1) if a.previous_assets else None,
             "remarks": a.remarks, "comparison_url": a.source_url,
@@ -1008,14 +1020,14 @@ def read_asset_growth(
         "increased": sum(r["increase"] > 0 for r in rows),
         "doubled_or_more": sum(r["pct"] is not None and r["pct"] >= 100 for r in rows),
         "median_pct": pcts[len(pcts) // 2] if pcts else None,
-        "won_2024": sum(r["won_2024"] for r in rows),
+        "won": sum(r["won"] for r in rows),
     }
     key = {"increase": lambda r: r["increase"], "pct": lambda r: r["pct"] or 0,
-           "assets": lambda r: r["assets_2024"], "decrease": lambda r: -r["increase"]}[sort]
+           "assets": lambda r: r["assets_now"], "decrease": lambda r: -r["increase"]}[sort]
     rows.sort(key=key, reverse=True)
-    return {"summary": summary, "rows": rows[:limit],
-            "note": "Self-declared assets in 2019 and 2024 affidavits of MPs elected in 2019 who stood again in 2024 "
-                    "(MyNeta). A change in declared assets is not by itself evidence of wrongdoing."}
+    return {"election": election, "previous_election": previous, "summary": summary, "rows": rows[:limit],
+            "note": f"Self-declared assets in {previous} and {election} affidavits of members elected in {previous} who "
+                    "stood again (MyNeta). A change in declared assets is not by itself evidence of wrongdoing."}
 
 
 # --- Party scoreboard: one row per party across datasets ---
@@ -1167,7 +1179,9 @@ def read_mp_profile(mp_id: int, db: Session = Depends(get_db)):
         },
         "asset_change_since_2019": None if not affidavit else next((
             {"assets_2019": x.previous_assets, "assets_2024": x.assets, "comparison_url": x.source_url}
+            # MyNeta ids are only unique within one election, so scope the lookup
             for x in db.query(models.AssetComparison).filter(
+                models.AssetComparison.election == affidavit.election,
                 models.AssetComparison.myneta_id == _myneta_id(affidavit.source_url))), None),
         "affidavit": None if not affidavit else {
             "name_on_affidavit": affidavit.name, "election": affidavit.election, "assets": affidavit.assets,

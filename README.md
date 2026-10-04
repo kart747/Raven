@@ -35,7 +35,7 @@ back to the original source on every record.
 | **Electoral bonds** | All 20,384 encashed bonds (Apr 2019 – Feb 2024), joined to purchasers on the unique bond number. Search, filter by party, year or purchaser, export CSV. |
 | **Purchaser profiles** | Each company's total, the parties it funded, monthly encashments, and every spelling SBI printed for the name. Optional sourced events (court orders, raids, contract awards) can be shown on the same timeline. |
 | **Candidate affidavits** | Every Lok Sabha 2024 candidate (with winners marked) and every sitting MLA from each state's latest assembly election, from MyNeta: declared assets, liabilities, pending cases, education. Per-state totals drive the map. |
-| **Asset change 2019 → 2024** | Declared assets of the 289 MPs elected in 2019 who stood again in 2024, from MyNeta's affidavit-to-affidavit comparison; sortable by ₹ or % change, filter by 2024 result; shown on MP profiles. |
+| **Declared-asset change** | Members who stood again, affidavit vs affidavit (MyNeta): 289 MPs (2019 → 2024) and 2,300+ MLAs across 25 assemblies; sortable by ₹ or % change, filter by result; shown on MP profiles. |
 | **NGO foreign funding** | About 25,000 NGOs and 87,000 annual FCRA returns (FY2016-17 to FY2020-21), with sector breakdowns, flows and year-over-year increases. |
 | **Parliament activity** | Attendance, debates, questions and private member bills for the 18th Lok Sabha, plus per-state views. |
 | **Lok Sabha questions** | Every question asked since 2009 (15th–18th Lok Sabha), searchable by words, ministry and member, each linked to the official answer PDF. Purchaser profiles list questions whose titles name the company. |
