@@ -150,6 +150,8 @@ def test_question_mentions_are_conservative():
     assert distinctive_name("FUTURE GAMING AND HOTEL SERVICES PR") is None  # no legal form, could be truncated
     assert distinctive_name("LAKSHMI NIWAS MITTAL") is None  # individuals are never matched
     assert distinctive_name("INDIA POWER LIMITED") is None  # generic words only
+    assert distinctive_name("INFRASTRUCTURE LOGISTICS PVT LTD") is None  # an ordinary phrase in titles
+    assert distinctive_name("MARUTI SUZUKI INDIA LTD") == "MARUTI SUZUKI"
     titles = {1: "Contracts awarded to Megha Engineering and Infrastructures",
               2: "Megha rainfall in Engineering colleges"}
     assert find_mentions(titles, ["MEGHA ENGINEERING AND INFRASTRUCTURES LIMITED"]) == [
