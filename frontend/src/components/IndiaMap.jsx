@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useT } from '../lib/i18n';
 
 // Fix Leaflet's default marker icon paths in webpack/vite environments
 delete L.Icon.Default.prototype._getIconUrl;
@@ -57,6 +58,7 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
   const [hoveredState, setHoveredState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [metricId, setMetricId] = useState('assets');
+  const t = useT();
 
   // Load the bundled India GeoJSON (public/india.geojson)
   useEffect(() => {
@@ -125,8 +127,8 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
     <div className="relative glass-panel rounded-2xl p-5 flex flex-col justify-between min-h-[480px] shadow-lg border border-slate-900">
       <div className="w-full flex justify-between items-start gap-3 mb-3">
         <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">India map</h3>
-          <p className="text-[10px] text-slate-400">{metric.note}. Click a state for details.</p>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('map.title')}</h3>
+          <p className="text-[10px] text-slate-400">{metric.note}. {t('map.click')}</p>
         </div>
         <button
           onClick={() => onSelectState(null)}
@@ -136,7 +138,7 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
               : 'text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
           }`}
         >
-          All India
+          {t('map.allIndia')}
         </button>
       </div>
 
@@ -175,7 +177,7 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
           <div className="absolute bottom-3 left-3 right-3 glass-panel border-cyan-500/30 bg-slate-950/90 rounded-xl p-3 shadow-2xl pointer-events-none z-[1000]">
             <div className="flex justify-between items-center gap-3">
               <span className="text-xs font-bold text-white">{hoveredState}</span>
-              <span className="text-[11px] text-emerald-400 font-bold">{hoveredValue != null ? metric.format(hoveredValue) : 'No data'}</span>
+              <span className="text-[11px] text-emerald-400 font-bold">{hoveredValue != null ? metric.format(hoveredValue) : t('map.noData')}</span>
             </div>
             <div className="mt-1 text-[10px] text-slate-400">{metric.label} · {metric.detail(hoveredState)}</div>
           </div>
@@ -186,10 +188,10 @@ export default function IndiaMap({ selectedState, onSelectState, lsSummary, vsSu
         <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: SHADES.high }}></span><span>≥ {metric.format(t2)}</span></div>
         <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: SHADES.mid }}></span><span>{metric.format(t1)} – {metric.format(t2)}</span></div>
         <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: SHADES.low }}></span><span>&lt; {metric.format(t1)}</span></div>
-        <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: SHADES.none }}></span><span>No data</span></div>
+        <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: SHADES.none }}></span><span>{t('map.noData')}</span></div>
       </div>
       <p className="mt-2 text-[9px] text-slate-600">
-        Boundaries as per the Survey of India map, from{' '}
+        {t('map.credit')}{' '}
         <a href="https://github.com/datameet/maps/tree/master/States" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">DataMeet</a>.
       </p>
     </div>

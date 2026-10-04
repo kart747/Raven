@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useCandidateStateSummary } from '../../lib/queries';
+import { useT } from '../../lib/i18n';
 import { CandidatesPanel, LegislativePanel, NgoPanel } from './DossierPanels';
 
 const TABS = [
-  { id: 'candidates', label: 'Lok Sabha', source: 'Source: MyNeta / ADR (Lok Sabha 2024 affidavits)' },
-  { id: 'mlas', label: 'MLAs', source: 'Source: MyNeta / ADR (latest assembly election affidavits)' },
-  { id: 'ngos', label: 'NGO Foreign Funding', source: 'Source: FCRA annual returns (MHA)' },
-  { id: 'legislative', label: 'Parliament', source: 'Source: Lok Sabha activity (Vonter dataset)' },
+  { id: 'candidates', label: 'state.tab.ls', source: 'Source: MyNeta / ADR (Lok Sabha 2024 affidavits)' },
+  { id: 'mlas', label: 'state.tab.mla', source: 'Source: MyNeta / ADR (latest assembly election affidavits)' },
+  { id: 'ngos', label: 'state.tab.ngo', source: 'Source: FCRA annual returns (MHA)' },
+  { id: 'legislative', label: 'state.tab.parl', source: 'Source: Lok Sabha activity (Vonter dataset)' },
 ];
 
 export default function StateDossier({ state, candidateSummary, onOpenMp }) {
+  const t = useT();
+  const tr = t;
   const [tab, setTab] = useState('candidates');
   const active = TABS.find((t) => t.id === tab);
   const { data: mlaSummary = {} } = useCandidateStateSummary('Vidhan Sabha');
@@ -17,15 +20,15 @@ export default function StateDossier({ state, candidateSummary, onOpenMp }) {
   return (
     <div className="glass-panel rounded-2xl p-6 shadow-xl border border-slate-900 flex flex-col gap-4 min-h-[480px]">
       <div>
-        <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block">State profile</span>
-        <h2 className="text-xl font-bold text-white mt-0.5">{state || 'Select a state'}</h2>
+        <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block">{t('state.profile')}</span>
+        <h2 className="text-xl font-bold text-white mt-0.5">{state || t('state.select')}</h2>
       </div>
 
       <div className="flex border-b border-slate-900 text-xs">
-        {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 py-2 font-bold transition-all border-b-2 ${tab === t.id ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-white'}`}>
-            {t.label}
+        {TABS.map((tb) => (
+          <button key={tb.id} onClick={() => setTab(tb.id)}
+            className={`flex-1 py-2 font-bold transition-all border-b-2 ${tab === tb.id ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-white'}`}>
+            {tr(tb.label)}
           </button>
         ))}
       </div>
@@ -37,9 +40,9 @@ export default function StateDossier({ state, candidateSummary, onOpenMp }) {
             : <LegislativePanel state={state} onOpenMp={onOpenMp} />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-slate-800 rounded-2xl bg-slate-950/30 px-6 py-10">
-          <h3 className="text-sm font-bold text-slate-200">Click a state on the map</h3>
+          <h3 className="text-sm font-bold text-slate-200">{t('state.empty.title')}</h3>
           <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-            Shows that state's Lok Sabha candidates, sitting MLAs, NGO foreign contributions, and MPs' parliamentary activity.
+            {t('state.empty.body')}
           </p>
         </div>
       )}

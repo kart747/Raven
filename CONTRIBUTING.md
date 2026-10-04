@@ -39,6 +39,11 @@ cd frontend && npm run build
 7. **Data quality:** add the dataset to `/api/v1/data-quality` with its coverage and gaps.
 8. **Docs:** add the source to the README's data table and its known gaps to "Data quality and known gaps".
 
+## Translations
+
+Interface text lives in `frontend/src/lib/i18n.js` as key → string per language. To add a language, copy the
+`en` block, translate it, and add the language to `LANGS`. Don't translate data (names, parties, figures).
+
 ## Pull requests
 
 - Keep each PR to one dataset or one feature.

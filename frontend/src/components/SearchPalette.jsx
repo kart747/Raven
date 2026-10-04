@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Award, Building2, ExternalLink, Flag, Landmark, MessageSquareText, Search, UserCheck, X } from 'lucide-react';
 import { useSearch } from '../lib/queries';
 import Spinner from './ui/Spinner';
+import { useT } from '../lib/i18n';
 
 const GROUPS = [
   { key: 'parties', label: 'Parties', icon: Flag },
@@ -32,6 +33,7 @@ function describe(group, item) {
 
 /** Search across every dataset. Opens with the header button or the "/" key. */
 export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, onOpenState, onOpenParty, onOpenMp }) {
+  const t = useT();
   const [q, setQ] = useState('');
   const input = useRef(null);
   const debounced = useDebounced(q, 250);
@@ -60,14 +62,14 @@ export default function SearchPalette({ open, onClose, onOpenDonor, onOpenNgo, o
         <div className="flex items-center gap-3 px-4 border-b border-slate-900">
           <Search className="w-4 h-4 text-slate-500" />
           <input ref={input} value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="Search parties, companies, candidates, MLAs, NGOs, MPs, questions..."
+            placeholder={t('search.placeholder')}
             className="flex-1 py-4 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none" />
           {isFetching && <Spinner />}
           <button onClick={onClose} className="p-1 text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
         </div>
         <div className="max-h-[60vh] overflow-y-auto p-2">
           {debounced.trim().length < 2 ? (
-            <p className="p-6 text-center text-xs text-slate-500">Type at least two letters. Purchasers also match the raw SBI spellings.</p>
+            <p className="p-6 text-center text-xs text-slate-500">{t('search.hint')}</p>
           ) : isError ? (
             <p className="p-6 text-center text-xs text-red-400">Search failed. Is the API running?</p>
           ) : data && GROUPS.every((g) => !data[g.key]?.total) ? (
