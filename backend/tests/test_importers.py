@@ -124,6 +124,8 @@ def test_myneta_constituency_page_marks_winner_and_defers_image_figures():
     </table></body></html>"""
     constituency, region, rows = parse_constituency_page(html, election_url("LokSabha2024"), "LokSabha2024")
     assert (constituency, region) == ("West Delhi", "DELHI (NCT)")
+    multi_word = html.replace("WEST DELHI : DELHI (NCT) Lok Sabha 2024", "LUCKNOW : UTTAR PRADESH Lok Sabha 2024")
+    assert parse_constituency_page(multi_word, election_url("LokSabha2024"), "LokSabha2024")[:2] == ("Lucknow", "UTTAR PRADESH")
     winner, other = rows
     assert winner["is_winner"] and winner["criminal_cases"] == 1 and winner["assets"] is None
     assert not other["is_winner"] and other["assets"] == 5442410 and other["liabilities"] == 1700000

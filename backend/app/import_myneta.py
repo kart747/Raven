@@ -200,8 +200,14 @@ def parse_constituency_page(html: str, base_url: str, slug: str) -> tuple[str, s
     """(constituency, region, candidates). Region is the state on Lok Sabha pages, the district on assembly pages."""
     soup, header, rows = _candidate_table(html)
     title = soup.title.get_text(" ", strip=True) if soup.title else ""
-    m = re.match(r"List of Candidates in (.+?) : (.+?) (?:Lok Sabha \d{4}|[A-Za-z ]+ \d{4})$", title)
+    # "List of Candidates in <SEAT> : <REGION> <ELECTION LABEL>", e.g. "... : UTTAR PRADESH Lok Sabha 2024".
+    # The label is stripped exactly, so multi-word regions stay whole.
+    m = re.match(r"List of Candidates in (.+?) : (.+)$", title)
     constituency, region = (m.group(1).title(), m.group(2)) if m else ("", "")
+    label = re.match(r"([A-Za-z]+?)(\d{4})$", slug)
+    if label:
+        words = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", label.group(1))  # "LokSabha" -> "Lok Sabha"
+        region = re.sub(rf"\s*{re.escape(words)}\s+{label.group(2)}$", "", region, flags=re.I).strip()
     col = {h: i for i, h in enumerate(header)}
     out = []
     for row in rows:
