@@ -46,7 +46,23 @@ def _sha256(path: str) -> str:
     return h.hexdigest()
 
 
-def run_export(out_dir: str | None = None) -> dict:
+def diff_manifests(previous: dict, current_files: list[dict]) -> list[dict]:
+    """Per-table row changes versus a previous release manifest."""
+    before = {f["table"]: f for f in previous.get("files", [])}
+    changes = []
+    for f in current_files:
+        old = before.get(f["table"])
+        if old is None:
+            changes.append({"table": f["table"], "status": "new", "rows": f["rows"]})
+        elif old["sha256"] != f["sha256"]:
+            changes.append({"table": f["table"], "status": "changed", "rows_before": old["rows"],
+                            "rows": f["rows"], "row_change": f["rows"] - old["rows"]})
+    for table in sorted(set(before) - {f["table"] for f in current_files}):
+        changes.append({"table": table, "status": "removed", "rows_before": before[table]["rows"]})
+    return changes
+
+
+def run_export(out_dir: str | None = None, previous_manifest: str | None = None) -> dict:
     ensure_schema()
     today = datetime.date.today().isoformat()
     out_dir = out_dir or os.path.join(PROJECT_ROOT, "data", "releases", f"raven-{today}")
@@ -83,6 +99,12 @@ def run_export(out_dir: str | None = None) -> dict:
         ],
         "files": files,
     }
+    if previous_manifest and os.path.isfile(previous_manifest):
+        with open(previous_manifest, encoding="utf-8") as f:
+            previous = json.load(f)
+        manifest["previous_release"] = previous.get("name")
+        manifest["changes_since_previous"] = diff_manifests(previous, files)
     with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
-    return {"out_dir": out_dir, "tables": len(files), "rows": sum(f["rows"] for f in files)}
+    return {"out_dir": out_dir, "tables": len(files), "rows": sum(f["rows"] for f in files),
+            "changed_tables": len(manifest.get("changes_since_previous", []))}

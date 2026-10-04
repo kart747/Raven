@@ -50,10 +50,18 @@ jobs:
           GROQ_API_KEY: ""
         run: python -m app.cli ingest-all
 
+      - name: Previous release manifest (for the change report)
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prev=$(gh release list --limit 50 --json tagName -q '.[].tagName' | grep '^data-' | head -1 || true)
+          if [ -n "$prev" ]; then gh release download "$prev" -p manifest.json -D prev-release; fi
+
       - name: Export release bundle
         id: export
         run: |
-          python -m app.cli export-release
+          python -m app.cli export-release --previous ../prev-release/manifest.json
           echo "dir=$(ls -d ../data/releases/raven-* | tail -1)" >> "$GITHUB_OUTPUT"
           echo "tag=data-$(date -u +%F)" >> "$GITHUB_OUTPUT"
 
@@ -71,6 +79,16 @@ jobs:
           print("| Table | Rows | Source |\n|---|---|---|")
           for f in m["files"]:
               print(f"| `{f['file']}` | {f['rows']:,} | {f['source']} |")
+          changes = m.get("changes_since_previous")
+          if changes is not None:
+              print(f"\n**Changes since {m.get('previous_release')}**\n")
+              if not changes:
+                  print("No table changed.")
+              for c in changes:
+                  if c["status"] == "changed":
+                      print(f"- `{c['table']}`: {c['rows_before']:,} → {c['rows']:,} rows ({c['row_change']:+,})")
+                  else:
+                      print(f"- `{c['table']}`: {c['status']}")
           print("\n**Caveats**")
           for c in m["caveats"]:
               print(f"- {c}")

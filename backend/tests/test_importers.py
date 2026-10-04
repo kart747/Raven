@@ -277,3 +277,18 @@ print("ok")
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run([sys.executable, "-c", script], cwd=backend, env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr[-3000:]
+
+
+def test_release_diff_reports_changed_new_and_removed_tables():
+    from app.export_release import diff_manifests
+    previous = {"files": [{"table": "donations", "rows": 10, "sha256": "a"},
+                          {"table": "ngos", "rows": 5, "sha256": "b"},
+                          {"table": "old", "rows": 1, "sha256": "c"}]}
+    current = [{"table": "donations", "rows": 12, "sha256": "z"},
+               {"table": "ngos", "rows": 5, "sha256": "b"},
+               {"table": "parliament_questions", "rows": 7, "sha256": "q"}]
+    changes = {c["table"]: c for c in diff_manifests(previous, current)}
+    assert changes["donations"]["row_change"] == 2
+    assert "ngos" not in changes                       # unchanged
+    assert changes["parliament_questions"]["status"] == "new"
+    assert changes["old"]["status"] == "removed"

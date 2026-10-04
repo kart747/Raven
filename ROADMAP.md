@@ -66,8 +66,8 @@ Each item is one importer in `backend/app/` plus tests. See [CONTRIBUTING.md](CO
 - **Public read-only API** with keys and rate limits, plus documented, versioned endpoints.
 - ✅ **Open data releases:** `export-release` writes CSV + manifest with checksums, published monthly by the
   `Data release` GitHub Action. Next: Parquet.
-- ✅ **Automated refresh:** the `Data release` workflow rebuilds everything from source monthly. Next: a diff report
-  of what changed between releases.
+- ✅ **Automated refresh:** the `Data release` workflow rebuilds everything from source monthly, and each release
+  lists per-table changes since the previous one.
 - **Source archiving:** every source document snapshotted (Wayback Machine or our own store) so citations
   survive link rot.
 - 🟡 **Indian languages:** Hindi for the interface shell and Key facts (navigation, notices, map, state panel, search; `#lang=hi`).

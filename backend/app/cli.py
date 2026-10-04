@@ -79,9 +79,9 @@ def build_seat_map():
     print(json.dumps(run_build(), indent=2))
 
 
-def export_release():
+def export_release(previous=None):
     from .export_release import run_export
-    print(json.dumps(run_export(), indent=2))
+    print(json.dumps(run_export(previous_manifest=previous), indent=2))
 
 
 def ingest_fcra_status(args):
@@ -110,11 +110,14 @@ def main():
     parser.add_argument("file", nargs="?", help="ingest-fcra-status: MHA list as CSV or XLSX")
     parser.add_argument("--status", help="ingest-fcra-status: Active | Suspended | Cancelled")
     parser.add_argument("--source-url", help="ingest-fcra-status: page the list was downloaded from")
+    parser.add_argument("--previous", help="export-release: previous release's manifest.json, to report changes")
     args = parser.parse_args()
     if args.command == "ingest-fcra-status":
         if not (args.file and args.status and args.source_url):
             parser.error("ingest-fcra-status needs FILE --status STATUS --source-url URL")
         ingest_fcra_status(args)
+    elif args.command == "export-release":
+        export_release(args.previous)
     elif args.command == "ingest-all":
         for name in ("seed", "ingest-bonds", "ingest-fcra", "ingest-candidates", "ingest-assemblies", "ingest-legislative", "ingest-questions", "ingest-events", "brief"):
             print(f"\n=== {name} ===")
