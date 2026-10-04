@@ -311,6 +311,14 @@ def read_candidate_state_summary(
     }
 
 
+@app.get("/api/v1/ngos/state-totals")
+def read_ngo_state_totals(db: Session = Depends(get_db)):
+    """Total declared foreign contributions per state (for the map)."""
+    rows = db.query(models.NGO.state, func.sum(models.NGODonation.amount))\
+        .join(models.NGODonation, models.NGODonation.ngo_id == models.NGO.id).group_by(models.NGO.state).all()
+    return {state: float(total) for state, total in rows}
+
+
 @app.get("/api/v1/ngos/state-summary/{state}")
 def read_ngo_state_summary(state: str, top: int = Query(50, ge=1, le=500), db: Session = Depends(get_db)):
     """NGO totals for one state, computed in SQL, plus the top recipients."""

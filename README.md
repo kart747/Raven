@@ -38,7 +38,7 @@ back to the original source on every record.
 | **NGO foreign funding** | About 25,000 NGOs and 87,000 annual FCRA returns (FY2016-17 to FY2020-21), with sector breakdowns, flows and year-over-year increases. |
 | **Parliament activity** | Attendance, debates, questions and private member bills for the 18th Lok Sabha, plus per-state views. |
 | **Lok Sabha questions** | Every question asked since 2009 (15th–18th Lok Sabha), searchable by words, ministry and member, each linked to the official answer PDF. Purchaser profiles list questions whose titles name the company. |
-| **State map** | Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
+| **State map** | Four layers (candidate assets, candidates declaring cases, MLAs declaring cases, NGO foreign funding). Click a state to see its Lok Sabha candidates, MLAs, NGOs and MPs side by side. |
 | **AI brief** | A short weekly summary. The model is given only the database figures and told to use nothing else, and the exact input is shown next to the text so you can check it. |
 | **MP profiles** | Each Lok Sabha MP's 2024 affidavit next to their parliamentary record: attendance, debates, every question since 2009 by ministry, and bills. |
 | **Party profiles** | For each party: bonds received by year and top purchasers, MPs won in 2024, sitting MLAs by state, share of candidates declaring cases, and MP attendance. |

@@ -18,7 +18,7 @@ import PibTicker from './components/dashboard/PibTicker';
 import BondFlows from './components/dashboard/BondFlows';
 import KeyFacts from './components/dashboard/KeyFacts';
 import StateDossier from './components/dashboard/StateDossier';
-import { useCandidateStateSummary, useDashboardStats, useParties } from './lib/queries';
+import { useCandidateStateSummary, useDashboardStats, useNgoStateTotals, useParties } from './lib/queries';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -59,6 +59,8 @@ export default function App() {
   const { data: parties = [] } = useParties();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: stateStats = {} } = useCandidateStateSummary();
+  const { data: mlaStats = {} } = useCandidateStateSummary('Vidhan Sabha');
+  const { data: ngoTotals = {} } = useNgoStateTotals();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -116,7 +118,8 @@ export default function App() {
             <PibTicker />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-7">
-                <IndiaMap selectedState={selectedState} onSelectState={setSelectedState} stateStats={stateStats} />
+                <IndiaMap selectedState={selectedState} onSelectState={setSelectedState}
+                  lsSummary={stateStats} vsSummary={mlaStats} ngoTotals={ngoTotals} />
               </div>
               <div className="lg:col-span-5">
                 <StateDossier state={selectedState} candidateSummary={stateStats[selectedState]} onOpenMp={setMpId} />

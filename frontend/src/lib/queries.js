@@ -114,3 +114,6 @@ export const useInsights = () =>
 
 export const useMpProfile = (id) =>
   useQuery({ queryKey: ['mp', id], queryFn: () => apiGet(`/api/v1/mps/${id}/profile`), enabled: id != null });
+
+export const useNgoStateTotals = () =>
+  useQuery({ queryKey: ['ngo-state-totals'], queryFn: () => apiGet('/api/v1/ngos/state-totals') });
